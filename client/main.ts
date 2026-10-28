@@ -41,14 +41,8 @@ function rememberRoom(a: Ack): void { if (!a.ok) { error = a.error || 'Could not
 function create(practice = false): void { const token = newToken(); socket.emit('create', { name: playerName(), token }, (a: Ack) => { rememberRoom(a); if (practice && a.ok) { socket.emit('addBot'); socket.emit('addBot'); socket.emit('addBot'); } }); }
 function join(c: string): void { c = c.trim().toUpperCase(); socket.emit('join', { code: c, name: playerName(), token: localStorage.getItem(`chicken-token-${c}`) || newToken() }, rememberRoom); }
 function button(id: string, label: string, style = ''): string { return `<button id="${id}" class="${style}">${label}</button>`; }
-function weaponRect(g: Phaser.GameObjects.Graphics, x: number, y: number, dx: number, dy: number, w: number, h: number, facing: number, color: number): void {
-  g.fillStyle(color); g.fillRect(x + (facing < 0 ? -dx-w : dx), y + dy, w, h);
-}
-function drawWeapon(g: Phaser.GameObjects.Graphics, weapon: Weapon, x: number, y: number, facing: number, scale = 1): void {
-  const r=(dx:number,dy:number,w:number,h:number,c:number)=>weaponRect(g,x,y,dx*scale,dy*scale,w*scale,h*scale,facing,c);
-  if (weapon === 'pistol') { r(-3,-5,20,5,0x263244); r(-2,-4,16,3,0xb8c5cd); r(2,0,7,10,0x394c60); r(13,-3,3,2,0xffd86c); }
-  else if (weapon === 'shotgun') { r(-5,-6,34,6,0x263244); r(-3,-5,27,3,0xc4a16a); r(1,0,9,8,0x77523a); r(22,-3,5,2,0xe9c58b); }
-  else { g.fillStyle(0x263244); g.fillCircle(x,y,8*scale); g.fillStyle(0x6d8291); g.fillCircle(x,y,5*scale); g.fillStyle(0xffd86c); g.fillRect(x-1*scale,y-12*scale,2*scale,5*scale); g.fillRect(x+2*scale,y-12*scale,4*scale,2*scale); }
+function drawGrenade(g: Phaser.GameObjects.Graphics, x: number, y: number, scale = 1): void {
+  g.fillStyle(0x263244); g.fillCircle(x,y,8*scale); g.fillStyle(0x6d8291); g.fillCircle(x,y,5*scale); g.fillStyle(0xffd86c); g.fillRect(x-1*scale,y-12*scale,2*scale,5*scale); g.fillRect(x+2*scale,y-12*scale,4*scale,2*scale);
 }
 function inviteUrl(): string {
   const host = ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname) ? lanAddresses[0] : location.origin;
@@ -80,22 +74,26 @@ class ArenaScene extends Phaser.Scene {
   graphics!: Phaser.GameObjects.Graphics;
   foreground!: Phaser.GameObjects.Graphics;
   chickens = new Map<string, Phaser.GameObjects.Image>();
+  weaponSprites = new Map<string, Phaser.GameObjects.Image>();
   constructor(){super('arena');}
-  preload(){ const entries: [string,string,number,number][] = [ ['idle','ChickenIdle-Sheet.png',20,21],['walk','ChickenWalking.png',20,21],['jump','ChickenJumping-Sheet.png',20,21],['fly','ChickenFly-Sheet.png',32,21],['die','ChickenDie-Sheet.png',20,21],['attack','Sprite-ChickenAttack-Sheet.png',34,21] ]; for(const [key,file,w,h] of entries) this.load.spritesheet(key,`/assets/chicken/${file}`,{frameWidth:w,frameHeight:h}); }
+  preload(){ const entries: [string,string,number,number][] = [ ['idle','ChickenIdle-Sheet.png',20,21],['walk','ChickenWalking.png',20,21],['jump','ChickenJumping-Sheet.png',20,21],['fly','ChickenFly-Sheet.png',32,21],['die','ChickenDie-Sheet.png',20,21],['attack','Sprite-ChickenAttack-Sheet.png',34,21] ]; for(const [key,file,w,h] of entries) this.load.spritesheet(key,`/assets/chicken/${file}`,{frameWidth:w,frameHeight:h}); this.load.image('weapon-pistol','/assets/weapons/glock-p80.png'); this.load.image('weapon-submachine','/assets/weapons/mp5a3.png'); }
   create(){ this.graphics=this.add.graphics(); this.foreground=this.add.graphics().setDepth(10); this.cameras.main.setBackgroundColor('#263c53'); }
   update(time:number){ if(!state) return; const s=state; const ar=ARENAS[s.arenaIndex]; const g=this.graphics; const f=this.foreground; g.clear(); f.clear();
     g.fillGradientStyle(0x547697,0x547697,0x1d3248,0x1d3248); g.fillRect(0,0,WIDTH,HEIGHT);
     g.fillStyle(0x304b62,0.5); for(let x=0;x<WIDTH;x+=100){g.fillTriangle(x,300,x+50,190,x+100,300);} g.fillStyle(0x1e3546); g.fillRect(0,490,WIDTH,50);
     g.fillStyle(0xb38555); for(const b of ar.blocks) {g.fillRect(b.x,b.y,b.w,b.h);g.fillStyle(0xe4b66f);g.fillRect(b.x,b.y,b.w,5);g.fillStyle(0xb38555);} g.fillStyle(0x9d754f); for(const b of ar.platforms){g.fillRect(b.x,b.y,b.w,b.h);g.fillStyle(0xdcb16b);g.fillRect(b.x,b.y,b.w,5);g.fillStyle(0x9d754f);}
-    for(const item of s.items){g.fillStyle(0x0c1723,0.35);g.fillEllipse(item.x,item.y+8,32,7);drawWeapon(g,item.type,item.x,item.y,1,1.15);}
-    for(const p of s.shots){g.fillStyle(p.kind==='grenade'?0xff8a55:p.kind==='shotgun'?0xffe8a5:0xf9e2a1);if(p.kind==='grenade')g.fillCircle(p.x,p.y,p.radius+1);else g.fillRect(p.x-p.radius,p.y-2,p.radius*2+3,4);}
+    const activeWeaponSprites = new Set<string>();
+    for(const item of s.items){g.fillStyle(0x0c1723,0.35);g.fillEllipse(item.x,item.y+8,36,7);if(item.type==='grenade')drawGrenade(g,item.x,item.y,1.15);else{const id=`item-${item.id}`;activeWeaponSprites.add(id);this.placeWeapon(id,`weapon-${item.type}`,item.x,item.y,1,item.type==='pistol'?0.8:0.62);}}
+    for(const p of s.shots){g.fillStyle(p.kind==='grenade'?0xff8a55:p.kind==='submachine'?0x8fe3ff:0xf9e2a1);if(p.kind==='grenade')g.fillCircle(p.x,p.y,p.radius+1);else g.fillRect(p.x-p.radius,p.y-2,p.radius*2+3,4);}
     for(const a of s.actors){let img=this.chickens.get(a.id); if(!img){img=this.add.image(a.x,a.y-13,'idle',0).setScale(2);this.chickens.set(a.id,img);} const texture=!a.alive?'die':a.flap?'fly':!a.grounded?'jump':Math.abs(a.vx)>0.8?'walk':'idle'; const tex=this.textures.get(texture); const frameCount=Math.max(1,tex.frameTotal-1); const frame=!a.alive?frameCount-1:Math.floor(time/(texture==='walk'?110:170))%frameCount; img.setTexture(texture,frame).setPosition(a.x,a.y-(a.ragdoll?8:a.crouch?10:18)).setScale(2,a.crouch?1.2:2).setFlipX(a.facing<0).setRotation(!a.alive?a.rotation:a.ragdoll?Math.PI/2:0).setVisible(true);
-      g.fillStyle(COLORS[a.slot],0.8);g.fillRoundedRect(a.x-18,a.y+2,36,5,2); if(a.weapon)drawWeapon(f,a.weapon,a.x+a.facing*12,a.y-17,a.facing,0.9); if(a.cluck){f.fillStyle(0xffefc0);f.fillCircle(a.x+a.facing*22,a.y-25,5);}
+      g.fillStyle(COLORS[a.slot],0.8);g.fillRoundedRect(a.x-18,a.y+2,36,5,2); if(a.weapon){const id=`actor-${a.id}`;activeWeaponSprites.add(id);this.placeWeapon(id,`weapon-${a.weapon}`,a.x+a.facing*18,a.y-16,a.facing,a.weapon==='pistol'?0.64:0.52);} if(a.cluck){f.fillStyle(0xffefc0);f.fillCircle(a.x+a.facing*22,a.y-25,5);}
       if(a.hat){const x=a.x,y=a.y-(a.crouch?31:44);const color=[0,0x272d41,0x9c6042,0xffd769,0xf2f2e7,0x80d8d2,0x626f86,0xf87eae][a.hat];f.fillStyle(color);if(a.hat===1){f.fillRect(x-12,y,24,5);f.fillRect(x-7,y-17,14,17);}else if(a.hat===2){f.fillRect(x-15,y,30,4);f.fillRoundedRect(x-9,y-9,18,10,3);}else if(a.hat===3){f.fillRect(x-10,y-5,20,11);f.fillTriangle(x-10,y-5,x-7,y-16,x-3,y-5);f.fillTriangle(x-3,y-5,x,y-18,x+3,y-5);f.fillTriangle(x+3,y-5,x+7,y-16,x+10,y-5);}else if(a.hat===4){f.fillRect(x-9,y,18,5);f.fillRoundedRect(x-10,y-16,20,17,6);}else if(a.hat===5){f.fillRect(x-10,y,20,6);f.lineStyle(2,0x36495a);f.lineBetween(x,y,x,y-12);f.fillStyle(0xf7d45b);f.fillRect(x-11,y-14,22,3);}else if(a.hat===6){f.fillRoundedRect(x-9,y-7,18,12,4);f.fillTriangle(x-9,y,x-18,y-15,x-13,y+1);f.fillTriangle(x+9,y,x+18,y-15,x+13,y+1);}else{f.fillTriangle(x-10,y+4,x,y-17,x+10,y+4);f.fillStyle(0xffdf74);f.fillCircle(x,y-18,3);}}
     }
     for(const [id,img] of this.chickens) if(!s.actors.some(a=>a.id===id)){img.destroy();this.chickens.delete(id);}
+    for(const [id,img] of this.weaponSprites)if(!activeWeaponSprites.has(id)){img.destroy();this.weaponSprites.delete(id);}
     if(s.phase==='intermission'||s.phase==='winner'){for(let i=0;i<28;i++){g.fillStyle(COLORS[i%4],0.8);g.fillCircle(25+i*34,480-(i%3)*7,8);}}
   }
+  placeWeapon(id:string,key:string,x:number,y:number,facing:number,scale:number):void{let image=this.weaponSprites.get(id);if(!image){image=this.add.image(x,y,key).setDepth(1);this.weaponSprites.set(id,image);}image.setTexture(key).setPosition(x,y).setFlipX(facing<0).setScale(scale).setVisible(true);}
 }
 function initGame(){ game?.destroy(true); game=new Phaser.Game({type:Phaser.AUTO,width:WIDTH,height:HEIGHT,parent:'game',pixelArt:true,transparent:false,scene:[ArenaScene],scale:{mode:Phaser.Scale.FIT,autoCenter:Phaser.Scale.CENTER_BOTH}}); }
 function bindTouchControls():void { document.querySelectorAll<HTMLButtonElement>('[data-touch]').forEach(button=>{const action=button.dataset.touch as keyof Input;button.addEventListener('pointerdown',event=>{event.preventDefault();button.setPointerCapture(event.pointerId);touchPointers.set(event.pointerId,action);button.classList.add('pressed');});const release=(event:PointerEvent)=>{touchPointers.delete(event.pointerId);button.classList.toggle('pressed',[...touchPointers.values()].includes(action));};button.addEventListener('pointerup',release);button.addEventListener('pointercancel',release);button.addEventListener('lostpointercapture',release);}); }

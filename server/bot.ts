@@ -88,11 +88,11 @@ export function botInput(state: GameState, bot: Actor): Input {
   if (bot.weapon) {
     const xDistance = Math.abs(enemy.x - bot.x);
     const yDistance = Math.abs(enemy.y - bot.y);
-    const range = bot.weapon === 'shotgun' ? 270 : bot.weapon === 'grenade' ? 230 : 440;
+    const range = bot.weapon === 'submachine' ? 330 : bot.weapon === 'grenade' ? 230 : 440;
     const facesEnemy = Math.sign(enemy.x - bot.x) === bot.facing;
     const safeGrenade = bot.weapon !== 'grenade' || (enemyDistance > 105 && enemies.every(other => other.id === enemy.id || distance(bot, other) > 90));
     const grenadeRange = bot.weapon !== 'grenade' || enemyDistance < 220;
-    if (xDistance < range && yDistance < (bot.weapon === 'shotgun' ? 34 : 23) && facesEnemy && safeGrenade && grenadeRange && bot.cooldown <= 0 && !bot.prev.fire) input.fire = true;
+    if (xDistance < range && yDistance < 23 && facesEnemy && safeGrenade && grenadeRange && bot.cooldown <= 0 && (!bot.prev.fire || bot.weapon === 'submachine')) input.fire = true;
   }
 
   memory.lastX = bot.x; memory.lastY = bot.y;

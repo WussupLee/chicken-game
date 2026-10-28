@@ -80,10 +80,19 @@ describe('match simulation', () => {
     a.x = item.x; a.y = item.y + 15; a.grounded = true;
     tick(s, { a: { ...NO_INPUT, grab: true } });
     expect(a.weapon).toBe(item.type);
-    expect(a.ammo).toBe(item.type === 'pistol' ? 9 : item.type === 'shotgun' ? 4 : 3);
+    expect(a.ammo).toBe(item.type === 'pistol' ? 9 : item.type === 'submachine' ? 24 : 3);
     tick(s, { a: NO_INPUT }); tick(s, { a: { ...NO_INPUT, fire: true } });
-    expect(a.ammo).toBe(item.type === 'shotgun' ? 3 : item.type === 'grenade' ? 2 : 8);
-    expect(s.shots.length).toBe(item.type === 'shotgun' ? 6 : 1);
+    expect(a.ammo).toBe(item.type === 'submachine' ? 23 : item.type === 'grenade' ? 2 : 8);
+    expect(s.shots.length).toBe(1);
+  });
+
+  it('allows the submachine gun to fire automatically while fire is held', () => {
+    const s = newGame(13);
+    s.actors = [makeActor('a', 'A', false, 0), makeActor('b', 'B', false, 1)]; startRound(s);
+    const a = s.actors[0]; a.weapon = 'submachine'; a.ammo = 24; a.y = 300;
+    for (let i = 0; i < 8; i++) tick(s, { a: { ...NO_INPUT, fire: true } });
+    expect(a.ammo).toBe(22);
+    expect(s.shots.length).toBeGreaterThan(1);
   });
 
   it('moves bots toward a pickup and jumps or flaps toward a higher goal', () => {

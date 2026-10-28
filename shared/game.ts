@@ -3,7 +3,7 @@ export const HEIGHT = 540;
 export const TICK = 1 / 60;
 export const HATS = ['Bare', 'Top Hat', 'Cowboy', 'Crown', 'Chef', 'Propeller', 'Viking', 'Party'];
 export const COLORS = [0xffdc59, 0xff8484, 0x85ddff, 0xb6f68e];
-export const WEAPONS = ['pistol', 'shotgun', 'grenade'] as const;
+export const WEAPONS = ['pistol', 'submachine', 'grenade'] as const;
 export type Weapon = typeof WEAPONS[number];
 export type Phase = 'lobby' | 'round' | 'presenter' | 'intermission' | 'winner';
 export interface Input { left: boolean; right: boolean; down: boolean; jump: boolean; fire: boolean; grab: boolean; ragdoll: boolean; strafe: boolean; cluck: boolean }
@@ -81,7 +81,7 @@ function move(a: Actor, input: Input, arena: Arena): void {
 }
 export const WEAPON_STATS: Record<Weapon, { ammo: number; cooldown: number; projectileSpeed: number }> = {
   pistol: { ammo: 9, cooldown: 14, projectileSpeed: 14 },
-  shotgun: { ammo: 4, cooldown: 36, projectileSpeed: 13 },
+  submachine: { ammo: 24, cooldown: 6, projectileSpeed: 14 },
   grenade: { ammo: 3, cooldown: 38, projectileSpeed: 7 }
 };
 const ammoFor = (w: Weapon): number => WEAPON_STATS[w].ammo;
@@ -90,13 +90,9 @@ function shoot(s: GameState, a: Actor): void {
   const w = a.weapon;
   a.cooldown = WEAPON_STATS[w].cooldown;
   a.ammo--;
-  const count = w === 'shotgun' ? 6 : 1;
-  for (let i = 0; i < count; i++) {
-    const spread = w === 'shotgun' ? (i - 2.5) * 0.055 : 0;
-    const speed = WEAPON_STATS[w].projectileSpeed;
-    s.shots.push({ id: nextId++, kind: w, owner: a.id, x: a.x + a.facing * 17, y: a.y - 18, vx: a.facing * speed, vy: spread * speed + (w === 'grenade' ? -5 : 0), ttl: w === 'grenade' ? 100 : 90, radius: w === 'grenade' ? 5 : 3 });
-  }
-  a.vx -= a.facing * (w === 'shotgun' ? 1.4 : 0.2);
+  const speed = WEAPON_STATS[w].projectileSpeed;
+  s.shots.push({ id: nextId++, kind: w, owner: a.id, x: a.x + a.facing * 17, y: a.y - 18, vx: a.facing * speed, vy: w === 'grenade' ? -5 : 0, ttl: w === 'grenade' ? 100 : 90, radius: w === 'grenade' ? 5 : 3 });
+  a.vx -= a.facing * 0.2;
   if (a.ammo <= 0) a.weapon = null;
 }
 function kill(victim: Actor, attacker?: Actor): void { victim.alive = false; victim.ragdoll = true; victim.flap = false; victim.heldBody = null; victim.vx = (attacker?.facing ?? 1) * 3; victim.vy = -4; victim.rotation = 0; victim.angularVelocity = (attacker?.facing ?? 1) * 0.17; }
@@ -129,7 +125,7 @@ function interact(s: GameState, a: Actor, input: Input): void {
       }
     }
   }
-  if (input.fire && !a.prev.fire) shoot(s, a);
+  if (input.fire && (!a.prev.fire || a.weapon === 'submachine')) shoot(s, a);
   a.cluck = input.cluck;
 }
 export function tick(s: GameState, inputs: Record<string, Input>): void {
