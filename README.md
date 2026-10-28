@@ -46,6 +46,8 @@ Keep the host computer and server running during play. If another device cannot 
 
 Character sprites are from [vmiinv's Chicken pack](https://vmiinv.itch.io/chickenpack-asset). The included `client/public/assets/chicken/LICENSE.txt` allows use and modification in a game, but prohibits resale or distribution of the sprites as standalone assets. Other arena and hat graphics are drawn by the game code.
 
+Weapon silhouettes are currently drawn by the game code. [Arcade Island's GUNS Asset Pack V1](https://arcadeisland.itch.io/guns-asset-pack-v1) is the selected source for upcoming pistol and shotgun sprites; its page permits game use and modification and asks that assets not be resold individually or presented as original work. A small grenade icon is original. The source and terms are recorded in `REFERENCE.md`.
+
 ## Current limits
 
-The game has ten arenas, ten weapons, eight hats, private four-participant rooms, and one bot skill level. It is a playable first release, not a frame-perfect reproduction of Duck Game. It does not include public matchmaking, persistence, live spectator slots, a level editor, or the complete Duck Game content catalog.
+The game has ten arenas, three weapons (pistol, shotgun, grenade), eight hats, private four-participant rooms, and one bot skill level. It is a playable first release, not a frame-perfect reproduction of Duck Game. It does not include public matchmaking, persistence, live spectator slots, a level editor, or the complete Duck Game content catalog.
