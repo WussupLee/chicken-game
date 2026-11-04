@@ -12,19 +12,39 @@ export interface Box { x: number; y: number; w: number; h: number }
 export interface Actor { id: string; name: string; bot: boolean; slot: number; hat: number; x: number; y: number; vx: number; vy: number; rotation: number; angularVelocity: number; facing: number; alive: boolean; ragdoll: boolean; grounded: boolean; crouch: boolean; sliding: boolean; flap: boolean; wall: number; jumpGrace: number; jumpBuffer: number; slideTicks: number; grenadeFuse: number; emptyTicks: number; weapon: Weapon | null; heldBody: string | null; ammo: number; wins: number; prev: Input; cooldown: number; cluck: boolean }
 export interface Item { id: number; type: Weapon; x: number; y: number; heldBy: string | null }
 export interface Shot { id: number; kind: Weapon; owner: string; x: number; y: number; vx: number; vy: number; ttl: number; radius: number }
-export interface Cover extends Box { hp: number }
+export type CoverKind = 'crate' | 'door' | 'wall';
+export interface CoverSeed extends Box { kind: CoverKind }
+export interface Cover extends CoverSeed { hp: number; maxHp: number }
 export interface Effect { id: number; type: 'shot' | 'hit' | 'blast' | 'dust' | 'empty' | 'pin' | 'jump'; x: number; y: number; ttl: number }
-export interface Arena { name: string; blocks: Box[]; platforms: Box[]; spawns: { x: number; y: number }[]; itemSpawns: { x: number; y: number }[]; cover: Box[]; openSides?: boolean }
+export interface Arena { name: string; blocks: Box[]; platforms: Box[]; spawns: { x: number; y: number }[]; itemSpawns: { x: number; y: number }[]; cover: CoverSeed[]; openSides?: boolean }
 export interface GameState { phase: Phase; round: number; timer: number; phaseTimer: number; arenaIndex: number; actors: Actor[]; items: Item[]; shots: Shot[]; cover: Cover[]; effects: Effect[]; message: string; winnerId: string | null; seed: number }
 
 const floor = (y = 504): Box => ({ x: 0, y, w: WIDTH, h: HEIGHT - y });
 const block = (x: number, y: number, w: number, h = 18): Box => ({ x, y, w, h });
+const crate = (x: number, y: number, w = 34, h = 34): CoverSeed => ({ ...block(x, y, w, h), kind: 'crate' });
+const door = (x: number, y: number, h = 76): CoverSeed => ({ ...block(x, y, 26, h), kind: 'door' });
+const wall = (x: number, y: number, w: number, h: number): CoverSeed => ({ ...block(x, y, w, h), kind: 'wall' });
 const baseSpawns = [{ x: 104, y: 435 }, { x: 840, y: 435 }, { x: 285, y: 270 }, { x: 655, y: 270 }];
-function arena(name: string, blocks: Box[], platforms: Box[], itemSpawns: { x: number; y: number }[], cover: Box[], spawns = baseSpawns, openSides = false): Arena { return { name, blocks, platforms, spawns, itemSpawns, cover, openSides }; }
+function arena(name: string, blocks: Box[], platforms: Box[], itemSpawns: { x: number; y: number }[], cover: CoverSeed[], spawns = baseSpawns, openSides = false): Arena { return { name, blocks, platforms, spawns, itemSpawns, cover, openSides }; }
 export const ARENAS: Arena[] = [
-  arena('The Coop', [floor(),block(0,150,22,354),block(938,150,22,354),block(455,410,50,94)], [block(100,375,210),block(375,270,210),block(650,375,210)], [{x:125,y:489},{x:270,y:360},{x:420,y:255},{x:540,y:255},{x:690,y:360},{x:835,y:489}], [block(205,470,32,34),block(720,470,32,34),block(465,370,30,40)]),
-  arena('Sky Roost', [], [block(80,450,240,24),block(360,450,240,24),block(640,450,240,24),block(220,335,180),block(560,335,180),block(385,215,190)], [{x:160,y:435},{x:470,y:435},{x:800,y:435},{x:300,y:320},{x:650,y:320},{x:480,y:200}], [block(245,415,30,35),block(685,415,30,35),block(465,180,30,35)], [{x:140,y:425},{x:810,y:425},{x:300,y:310},{x:650,y:310}], true),
-  arena('The Silo', [floor(),block(60,235,28,269),block(872,235,28,269),block(465,390,30,114)], [block(90,405,230),block(640,405,230),block(355,340,250),block(160,265,190),block(610,265,190),block(390,170,180)], [{x:150,y:390},{x:760,y:390},{x:475,y:325},{x:250,y:250},{x:710,y:250},{x:480,y:155}], [block(270,370,28,35),block(685,370,28,35),block(465,305,30,35)])
+  arena('The Coop',
+    [floor(),block(0,150,22,354),block(938,150,22,354),block(455,446,50,58)],
+    [block(75,420,190),block(695,420,190),block(190,335,210),block(560,335,210),block(370,270,220),block(75,200,170),block(715,200,170),block(400,125,160)],
+    [{x:115,y:489},{x:305,y:320},{x:430,y:255},{x:545,y:255},{x:665,y:320},{x:845,y:489}],
+    [crate(180,470),crate(265,470),crate(660,470),crate(775,470),door(335,428),door(600,428),crate(205,304,30,31),crate(725,304,30,31),wall(257,255,28,80),wall(680,255,28,80),door(465,194,76),crate(105,166,30),crate(825,166,30),wall(435,75,26,50)],
+    [{x:104,y:504},{x:840,y:504},{x:300,y:335},{x:660,y:335}]),
+  arena('Sky Roost',
+    [],
+    [block(80,470,240,24),block(360,470,240,24),block(640,470,240,24),block(140,365,200),block(620,365,200),block(370,350,220),block(85,255,190),block(385,240,190),block(685,255,190),block(390,145,180)],
+    [{x:155,y:455},{x:475,y:455},{x:805,y:455},{x:255,y:350},{x:705,y:350},{x:480,y:130}],
+    [crate(245,436),crate(680,436),crate(400,436),door(365,394),door(590,394),crate(160,331,30),crate(765,331,30),wall(315,290,24,75),wall(620,290,24,75),crate(135,221,30),crate(810,221,30),door(450,164,76),crate(530,111,34,34)],
+    [{x:140,y:470},{x:810,y:470},{x:245,y:365},{x:715,y:365}],true),
+  arena('The Silo',
+    [floor(),block(60,235,28,269),block(872,235,28,269),block(465,440,30,64)],
+    [block(90,420,230),block(640,420,230),block(310,350,340),block(130,275,195),block(635,275,195),block(375,230,210),block(390,165,180)],
+    [{x:150,y:405},{x:770,y:405},{x:480,y:335},{x:230,y:260},{x:730,y:260},{x:480,y:150}],
+    [crate(155,470),crate(250,470),crate(680,470),crate(775,470),door(335,428),door(600,428),wall(310,305,25,45),wall(625,305,25,45),crate(375,316),crate(555,316),door(280,199,76),door(655,199,76),crate(145,241),crate(785,241),wall(455,183,26,47)],
+    [{x:150,y:504},{x:810,y:504},{x:230,y:275},{x:730,y:275}])
 ];
 
 let nextId = 1;
@@ -38,7 +58,7 @@ const actorBox = (a: Actor): Box => ({ x: a.x - 11, y: a.y - (a.ragdoll || a.cro
 export function startRound(s: GameState): void {
   s.phase = 'round'; s.round++; s.timer = 45; s.phaseTimer = 0; s.arenaIndex = (s.round - 1) % ARENAS.length; s.shots = [];
   const arena = ARENAS[s.arenaIndex];
-  s.cover = arena.cover.map(c => ({ ...c, hp: 3 })); s.effects = [];
+  s.cover = arena.cover.map(c => { const hp = c.kind === 'wall' ? 5 : c.kind === 'door' ? 4 : 3; return { ...c, hp, maxHp: hp }; }); s.effects = [];
   s.items = arena.itemSpawns.map((p) => ({ id: nextId++, type: WEAPONS[Math.floor(nextRandom(s) * WEAPONS.length)], x: p.x, y: p.y, heldBy: null }));
   s.actors.forEach((a, i) => { const p = arena.spawns[i]; Object.assign(a, { x: p.x, y: p.y, vx: 0, vy: 0, rotation: 0, angularVelocity: 0, facing: i % 2 ? -1 : 1, alive: true, ragdoll: false, grounded: false, crouch: false, sliding: false, flap: false, wall: 0, jumpGrace: 0, jumpBuffer: 0, slideTicks: 0, grenadeFuse: 0, emptyTicks: 0, weapon: null, heldBody: null, ammo: 0, cooldown: 0, prev: { ...NO_INPUT } }); });
   s.message = arena.name;
@@ -104,7 +124,11 @@ function kill(victim: Actor, attacker?: Actor): void { victim.alive = false; vic
 function blast(s: GameState, x: number, y: number, owner: string, radius: number): void {
   const attacker = s.actors.find(a => a.id === owner);
   for (const a of s.actors) if (a.alive && Math.hypot(a.x - x, a.y - 15 - y) < radius) kill(a, attacker);
-  s.cover = s.cover.filter(c => Math.hypot(c.x+c.w/2-x,c.y+c.h/2-y) >= radius + 18);
+  s.cover = s.cover.filter(c => {
+    if (Math.hypot(c.x+c.w/2-x,c.y+c.h/2-y) >= radius + 18) return true;
+    s.effects.push({ id: nextId++, type: 'dust', x: c.x+c.w/2, y: c.y+c.h/2, ttl: 12 });
+    return false;
+  });
   s.effects.push({ id: nextId++, type: 'blast', x, y, ttl: 24 });
 }
 function updateShots(s: GameState, arena: Arena): void {
@@ -117,7 +141,7 @@ function updateShots(s: GameState, arena: Arena): void {
     let hit = shot.x < -30 || shot.x > WIDTH+30 || shot.y < -30 || shot.y > HEIGHT+30;
     if (solid) {
       if (shot.kind === 'grenade') { if (oldY <= solid.y) { shot.y = solid.y - shot.radius; shot.vy = -Math.abs(shot.vy)*0.55; shot.vx *= 0.8; } else { shot.x = oldX; shot.vx *= -0.5; } }
-      else { hit = true; const cover = s.cover.find(c => c === solid); if (cover) { cover.hp--; if (cover.hp <= 0) s.cover = s.cover.filter(c => c !== cover); } s.effects.push({ id: nextId++, type: 'hit', x: shot.x, y: shot.y, ttl: 9 }); }
+      else { hit = true; const cover = s.cover.find(c => c === solid); if (cover) { cover.hp--; if (cover.hp <= 0) { s.cover = s.cover.filter(c => c !== cover); s.effects.push({ id: nextId++, type: 'dust', x: cover.x+cover.w/2, y: cover.y+cover.h/2, ttl: 12 }); } } s.effects.push({ id: nextId++, type: 'hit', x: shot.x, y: shot.y, ttl: 9 }); }
     }
     if (shot.kind !== 'grenade' && !hit) for (const a of s.actors) if (a.alive && a.id !== shot.owner && !a.sliding && overlap(actorBox(a), area)) { kill(a, s.actors.find(p => p.id === shot.owner)); hit = true; s.effects.push({ id: nextId++, type: 'hit', x: shot.x, y: shot.y, ttl: 9 }); break; }
     if (shot.ttl <= 0) { if (shot.kind === 'grenade') blast(s, shot.x, shot.y, shot.owner, 65); hit = true; }

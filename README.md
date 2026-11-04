@@ -58,4 +58,4 @@ Pistol and submachine gun sprites are from [Arcade Island's GUNS Asset Pack V1](
 
 ## Current limits
 
-The active rotation has three arenas with six weapon pads each, three weapons (pistol, submachine gun, grenade), eight hats, private four-participant rooms, and one bot skill level. It is a playable first release, not a frame-perfect reproduction of Duck Game. It does not include public matchmaking, persistence, live spectator slots, a level editor, or the complete Duck Game content catalog.
+The active rotation has three multi-tier arenas with six weapon pads each and breakable crates, doors, and walls. It also has three weapons (pistol, submachine gun, grenade), eight hats, private four-participant rooms, and one bot skill level. It is a playable first release, not a frame-perfect reproduction of Duck Game. It does not include public matchmaking, persistence, live spectator slots, a level editor, or the complete Duck Game content catalog.

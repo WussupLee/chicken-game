@@ -123,6 +123,42 @@ describe('match simulation', () => {
     tick(s,{a:{...NO_INPUT,jump:true,right:true}});expect(a.vy).toBeLessThan(-10);expect(a.vx).toBeGreaterThan(0);
   });
 
+  it('gives every arena four climbable tiers and many breakable routes', () => {
+    for (const arena of ARENAS) {
+      expect(arena.platforms.length).toBeGreaterThanOrEqual(7);
+      expect(new Set(arena.platforms.map(p => Math.round(p.y / 35))).size).toBeGreaterThanOrEqual(4);
+      expect(arena.cover.length).toBeGreaterThanOrEqual(12);
+      expect(new Set(arena.cover.map(c => c.kind))).toEqual(new Set(['crate', 'door', 'wall']));
+      for (const pad of arena.itemSpawns) {
+        expect([...arena.blocks, ...arena.platforms].some(p => pad.x >= p.x && pad.x <= p.x+p.w && Math.abs(p.y-(pad.y+15)) < 2)).toBe(true);
+        expect(arena.cover.some(c => pad.x >= c.x && pad.x <= c.x+c.w && pad.y >= c.y && pad.y <= c.y+c.h)).toBe(false);
+      }
+    }
+  });
+
+  it('lets bullets break crates, doors, and walls at different strengths', () => {
+    const s=newGame(31);s.actors=[makeActor('a','A',false,0),makeActor('b','B',false,1)];startRound(s);
+    for (const kind of ['crate','door','wall'] as const) {
+      const cover=s.cover.find(c=>c.kind===kind)!;
+      const health=cover.maxHp;
+      expect(health).toBe(kind==='wall'?5:kind==='door'?4:3);
+      for(let i=0;i<health;i++){
+        s.shots=[{id:1000+i,kind:'pistol',owner:'a',x:cover.x-7,y:cover.y+12,vx:14,vy:0,ttl:20,radius:3}];
+        tick(s,{});
+      }
+      expect(s.cover.includes(cover)).toBe(false);
+    }
+  });
+
+  it('lets a grenade remove several nearby pieces of cover', () => {
+    const s=newGame(32);s.actors=[makeActor('a','A',false,0),makeActor('b','B',false,1)];startRound(s);
+    const nearby=s.cover.filter(c=>c.kind==='crate'&&c.y===470&&c.x<300);
+    expect(nearby).toHaveLength(2);
+    s.shots=[{id:1200,kind:'grenade',owner:'a',x:240,y:487,vx:0,vy:0,ttl:1,radius:5}];
+    tick(s,{});
+    expect(nearby.every(c=>!s.cover.includes(c))).toBe(true);
+  });
+
   it('moves bots toward a pickup and jumps or flaps toward a higher goal', () => {
     const s = newGame(20);
     s.actors = [makeActor('bot', 'Bot', true, 0), makeActor('foe', 'Foe', true, 1)]; startRound(s);

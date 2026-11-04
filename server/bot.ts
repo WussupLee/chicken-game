@@ -91,7 +91,8 @@ export function botInput(state: GameState, bot: Actor): Input {
     const range = bot.weapon === 'submachine' ? 780 : bot.weapon === 'grenade' ? 250 : 800;
     const facesEnemy = Math.sign(enemy.x - bot.x) === bot.facing;
     const safeGrenade = bot.weapon !== 'grenade' || (enemyDistance > 95 && enemyDistance < 250 && bot.grenadeFuse < 110);
-    const clearShot = ![...arena.blocks,...state.cover].some(b => b.x < Math.max(bot.x,enemy.x) && b.x+b.w > Math.min(bot.x,enemy.x) && b.y < bot.y-15 && b.y+b.h > bot.y-20);
+    // Fire through breakable cover to open a path; only permanent geometry blocks the shot.
+    const clearShot = ![...arena.blocks,...arena.platforms].some(b => b.x < Math.max(bot.x,enemy.x) && b.x+b.w > Math.min(bot.x,enemy.x) && b.y < bot.y-15 && b.y+b.h > bot.y-20);
     if (xDistance < range && yDistance < (bot.weapon==='grenade'?85:42) && facesEnemy && safeGrenade && bot.cooldown <= 0 && (!bot.prev.fire || bot.weapon === 'submachine') && (bot.weapon==='grenade'||clearShot)) input.fire = true;
     if (bot.weapon === 'grenade' && bot.grenadeFuse > 0 && !bot.prev.fire && enemyDistance > 80) input.fire = true;
   }

@@ -127,7 +127,24 @@ class ArenaScene extends Phaser.Scene {
     g.fillGradientStyle(0x547697,0x547697,0x1d3248,0x1d3248); g.fillRect(0,0,WIDTH,HEIGHT);
     g.fillStyle(0x304b62,0.5); for(let x=0;x<WIDTH;x+=100){g.fillTriangle(x,300,x+50,190,x+100,300);} if(!ar.openSides){g.fillStyle(0x1e3546);g.fillRect(0,490,WIDTH,50);}
     g.fillStyle(0xb38555); for(const b of ar.blocks) {g.fillRect(b.x,b.y,b.w,b.h);g.fillStyle(0xe4b66f);g.fillRect(b.x,b.y,b.w,5);g.fillStyle(0xb38555);} g.fillStyle(0x9d754f); for(const b of ar.platforms){g.fillRect(b.x,b.y,b.w,b.h);g.fillStyle(0xdcb16b);g.fillRect(b.x,b.y,b.w,5);g.fillStyle(0x9d754f);}
-    for(const b of s.cover){g.fillStyle(b.hp===3?0x796148:b.hp===2?0x9a6950:0xb67a50);g.fillRect(b.x,b.y,b.w,b.h);g.lineStyle(2,0xd6b782);g.strokeRect(b.x,b.y,b.w,b.h);}
+    for(const b of s.cover){
+      const damaged=b.hp<b.maxHp;
+      if(b.kind==='crate'){
+        g.fillStyle(damaged?0xa57550:0x806044);g.fillRect(b.x,b.y,b.w,b.h);
+        g.lineStyle(2,0xe1b47a);g.strokeRect(b.x+1,b.y+1,b.w-2,b.h-2);
+        g.lineStyle(2,0x4e392c);g.lineBetween(b.x+4,b.y+4,b.x+b.w-4,b.y+b.h-4);g.lineBetween(b.x+b.w-4,b.y+4,b.x+4,b.y+b.h-4);
+      }else if(b.kind==='door'){
+        g.fillStyle(damaged?0x92694b:0x654f43);g.fillRect(b.x,b.y,b.w,b.h);
+        g.lineStyle(3,0xc99b6b);g.strokeRect(b.x+2,b.y+2,b.w-4,b.h-4);
+        g.lineStyle(1,0x3c3230);g.lineBetween(b.x+5,b.y+10,b.x+b.w-5,b.y+10);g.lineBetween(b.x+5,b.y+b.h-10,b.x+b.w-5,b.y+b.h-10);
+        g.fillStyle(0xffd58c);g.fillCircle(b.x+b.w-6,b.y+b.h/2,2);
+      }else{
+        g.fillStyle(damaged?0x78858a:0x566974);g.fillRect(b.x,b.y,b.w,b.h);
+        g.lineStyle(2,0x9cabb0);g.strokeRect(b.x,b.y,b.w,b.h);
+        g.lineStyle(1,0x34444c);for(let y=b.y+15;y<b.y+b.h;y+=16){g.lineBetween(b.x,y,b.x+b.w,y);g.lineBetween(b.x+b.w/2,y-15,b.x+b.w/2,y);}
+      }
+      if(damaged){g.lineStyle(2,0x271f1d);g.lineBetween(b.x+b.w*0.35,b.y+3,b.x+b.w*0.6,b.y+b.h*0.5);g.lineBetween(b.x+b.w*0.6,b.y+b.h*0.5,b.x+b.w*0.45,b.y+b.h-3);}
+    }
     const activeWeaponSprites = new Set<string>();
     for(const item of s.items){g.fillStyle(0x0c1723,0.35);g.fillEllipse(item.x,item.y+8,36,7);if(item.type==='grenade')drawGrenade(g,item.x,item.y,1.15);else{const id=`item-${item.id}`;activeWeaponSprites.add(id);this.placeWeapon(id,`weapon-${item.type}`,item.x,item.y,1,item.type==='pistol'?0.8:0.62);}}
     for(const p of s.shots){if(p.kind==='grenade'){drawGrenade(g,p.x,p.y,0.7);}else{g.fillStyle(0xff8d50,0.28);g.fillCircle(p.x,p.y,8);g.fillStyle(0xffeab1);g.fillCircle(p.x,p.y,3);}}
