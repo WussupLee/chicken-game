@@ -32,6 +32,8 @@ For live client editing, run `npm run server` and `npm run dev` in separate term
 
 ## Play together on a local network
 
+Current LAN test link: **http://192.168.1.161:3000/**. Open this on a phone or another PC connected to the same Wi-Fi while the host server is running. If the host's local IP changes, run `Invoke-RestMethod http://localhost:3000/api/network` on the host to get the new link. Save the address as a browser bookmark named **Chicken Game – Local Test**.
+
 1. On the host computer, run `npm run build` and `npm start` from `L:\Chicken Game`, then open <http://localhost:3000> and choose **Host a room**.
 2. The ready room shows a LAN invite such as `http://192.168.1.161:3000/?room=ABC123`. Send that link to friends on the same Wi-Fi or wired network, or tell them the address and six-character code separately.
 3. Each friend opens the host's address in their own browser. The link joins the room directly; otherwise choose **Join a room** and enter the code. The host can fill remaining slots with bots, then select **Start match**.

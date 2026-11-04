@@ -1,0 +1,10 @@
+Chicken Game local test link
+
+http://192.168.1.161:3000/
+
+Use this on a phone or PC connected to the same Wi-Fi while the host is running `npm start` from L:\Chicken Game.
+The address can change if the router assigns the host a new local IP. To check it:
+
+Invoke-RestMethod http://localhost:3000/api/network
+
+Then bookmark the current address as: Chicken Game – Local Test
