@@ -210,6 +210,11 @@ function initGame(){ game?.destroy(true); activeViewWidth=desiredViewWidth(); ga
 window.addEventListener('resize',()=>{if(game&&activeViewWidth!==desiredViewWidth())initGame();});
 function bindTouchControls():void {
   touchPointers.clear();
+  const controls=document.querySelector<HTMLElement>('.touch-controls');
+  if(!controls)return;
+  // iOS can still show Look Up or double-tap zoom despite touch-action on buttons.
+  for(const type of ['contextmenu','dblclick','selectstart','dragstart'])controls.addEventListener(type,event=>event.preventDefault());
+  for(const type of ['touchstart','touchmove'])controls.addEventListener(type,event=>event.preventDefault(),{passive:false});
   const refresh = () => document.querySelectorAll<HTMLButtonElement>('[data-touch]').forEach(button => button.classList.toggle('pressed',[...touchPointers.values()].includes(button.dataset.touch as keyof Input)));
   document.querySelectorAll<HTMLElement>('.touch-move,.touch-actions,.touch-shoulder').forEach(region => {
     const move = (event:PointerEvent) => {
