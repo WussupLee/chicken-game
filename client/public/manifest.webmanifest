@@ -1,0 +1,17 @@
+{
+  "name": "Chicken Game",
+  "short_name": "Chicken Game",
+  "description": "A four-player chicken arena shooter with local rooms and bots.",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "fullscreen",
+  "display_override": ["fullscreen", "standalone"],
+  "background_color": "#26313d",
+  "theme_color": "#26313d",
+  "orientation": "any",
+  "icons": [
+    { "src": "/icons/chicken-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/chicken-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}

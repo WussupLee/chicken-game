@@ -40,6 +40,12 @@ Current LAN test link: **http://192.168.1.161:3000/**. Open this on a phone or a
 
 Keep the host computer and server running during play. If another device cannot open the address, confirm that both devices are on the same network and that Windows Firewall permits Node.js to receive connections on TCP port 3000 for the private network. A room code identifies a room on this host; it does not connect across the internet without a public server or a VPN.
 
+## Home Screen and full-screen play
+
+The menu has **Add to Home Screen** and **Full screen** buttons. A Home Screen launch opens the handheld layout edge to edge, with controls positioned around the safe areas of the phone screen. In landscape, the D-pad and action buttons move beside the arena. On iPhone, open the link in Safari, choose **Share → Add to Home Screen**, then launch the new icon. On Android, use the install prompt or browser menu after the game is served over HTTPS.
+
+The current `http://192.168.1.161:3000/` LAN link is useful for testing, but Android requires HTTPS for installable web apps. **Full screen** works as an immediate browser-based option where the Fullscreen API is available. The game still needs a connection to the host computer for rooms and matches; the Home Screen icon does not make it playable offline.
+
 ## Hosting
 
 `railway.json` is available for later public hosting. For now, rooms and scores live in the local server's memory; restarting it clears them.

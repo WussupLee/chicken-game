@@ -5,6 +5,7 @@ import './style.css';
 
 type ViewState = GameState & { code: string; host: string };
 type Ack = { ok: boolean; code?: string; id?: string; token?: string; error?: string };
+type InstallPrompt = Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: string }> };
 const app = document.querySelector<HTMLDivElement>('#app')!;
 const socket = io({ autoConnect: true });
 let state: ViewState | null = null;
@@ -26,6 +27,42 @@ let snapshotAt = performance.now();
 let priorPositions = new Map<string,{x:number;y:number}>();
 let lanAddresses: string[] = [];
 const touchPointers = new Map<number, keyof Input>();
+let installPrompt: InstallPrompt | null = null;
+let installMessage = '';
+function updateDisplayMode(): void {
+  const iosStandalone = (navigator as Navigator & { standalone?: boolean }).standalone === true;
+  document.documentElement.classList.toggle('app-standalone', iosStandalone || !!document.fullscreenElement || matchMedia('(display-mode: fullscreen), (display-mode: standalone)').matches);
+}
+updateDisplayMode();
+window.addEventListener('beforeinstallprompt', event => { event.preventDefault(); installPrompt = event as InstallPrompt; });
+window.addEventListener('appinstalled', () => { installPrompt = null; installMessage = 'Chicken Game is on your Home Screen.'; if (screen === 'menu') render(); });
+document.addEventListener('fullscreenchange', updateDisplayMode);
+matchMedia('(display-mode: fullscreen), (display-mode: standalone)').addEventListener('change', updateDisplayMode);
+async function addToHomeScreen(): Promise<void> {
+  if (installPrompt) {
+    const prompt = installPrompt;
+    installPrompt = null;
+    try {
+      await prompt.prompt();
+      installMessage = (await prompt.userChoice).outcome === 'accepted' ? 'Open Chicken Game from your Home Screen for the full-screen layout.' : 'You can install later from your browser menu.';
+    } catch { installMessage = 'Open your browser menu and choose Install app.'; }
+  } else if (/iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)) {
+    installMessage = 'In Safari, tap Share, then Add to Home Screen. Open the new icon for edge-to-edge play.';
+  } else if (!window.isSecureContext) {
+    installMessage = 'Android app installation needs HTTPS. For this local network link, use Full screen now; an HTTPS link will enable Add to Home Screen.';
+  } else {
+    installMessage = 'Open your browser menu and choose Install app or Add to Home Screen.';
+  }
+  const help = document.querySelector('#install-help');
+  if (help) help.textContent = installMessage;
+}
+async function enterFullscreen(): Promise<void> {
+  try {
+    if (document.fullscreenElement) await document.exitFullscreen();
+    else if (document.documentElement.requestFullscreen) await document.documentElement.requestFullscreen();
+    else throw new Error('Fullscreen unavailable');
+  } catch { installMessage = 'Use Add to Home Screen to launch without browser controls.'; const help = document.querySelector('#install-help'); if (help) help.textContent = installMessage; }
+}
 window.addEventListener('blur', () => {
   touchPointers.clear();
   document.querySelectorAll<HTMLButtonElement>('[data-touch]').forEach(button => button.classList.remove('pressed'));
@@ -57,8 +94,8 @@ function inviteUrl(): string {
 const esc = (s: string) => s.replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' })[c]!);
 function render(): void {
   const title = `<h1 class="brand">CHICKEN GAME</h1><div class="tagline">Feathers will fly</div>`;
-  if (screen === 'menu') { app.innerHTML = `<main class="shell">${title}<section class="panel menu"><h2>Enter the coop</h2><div class="stack"><input id="name" maxlength="18" placeholder="Your name" value="${esc(localStorage.getItem('chicken-name') || '')}"/>${button('practice','Practice vs. bots')}${button('create','Host a room','secondary')}${button('showjoin','Join a room','ghost')}${button('showcontrols','Controls','ghost')}<div class="error">${esc(error)}</div></div></section><footer class="footer">2–4 chickens. One winner. Infinite clucking.</footer></main>`;
-    document.querySelector('#practice')!.addEventListener('click', () => create(true)); document.querySelector('#create')!.addEventListener('click', () => create()); document.querySelector('#showjoin')!.addEventListener('click', () => { screen='join'; render(); }); document.querySelector('#showcontrols')!.addEventListener('click', () => { screen='controls'; render(); }); return; }
+  if (screen === 'menu') { app.innerHTML = `<main class="shell">${title}<section class="panel menu"><h2>Enter the coop</h2><div class="stack"><input id="name" maxlength="18" placeholder="Your name" value="${esc(localStorage.getItem('chicken-name') || '')}"/>${button('practice','Practice vs. bots')}${button('create','Host a room','secondary')}${button('showjoin','Join a room','ghost')}${button('showcontrols','Controls','ghost')}<div class="install-actions">${button('addhome','Add to Home Screen','ghost')}${button('fullscreen','Full screen','ghost')}</div><div id="install-help" class="muted small" role="status">${esc(installMessage)}</div><div class="error">${esc(error)}</div></div></section><footer class="footer">2–4 chickens. One winner. Infinite clucking.</footer></main>`;
+    document.querySelector('#practice')!.addEventListener('click', () => create(true)); document.querySelector('#create')!.addEventListener('click', () => create()); document.querySelector('#showjoin')!.addEventListener('click', () => { screen='join'; render(); }); document.querySelector('#showcontrols')!.addEventListener('click', () => { screen='controls'; render(); }); document.querySelector('#addhome')!.addEventListener('click', () => { void addToHomeScreen(); }); document.querySelector('#fullscreen')!.addEventListener('click', () => { void enterFullscreen(); }); return; }
   if (screen === 'join') { app.innerHTML = `<main class="shell">${title}<section class="panel menu"><h2>Join a room</h2><div class="stack"><input id="name" maxlength="18" placeholder="Your name" value="${esc(localStorage.getItem('chicken-name') || '')}"/><input id="room" maxlength="6" placeholder="6-letter room code" value="${esc(new URLSearchParams(location.search).get('room') || '')}"/>${button('join','Join room')}${button('back','Back','ghost')}<div class="error">${esc(error)}</div></div></section></main>`; document.querySelector('#join')!.addEventListener('click',()=>join(document.querySelector<HTMLInputElement>('#room')!.value)); document.querySelector('#back')!.addEventListener('click',()=>{screen='menu';render();}); return; }
   if (screen === 'controls') { app.innerHTML = `<main class="shell">${title}<section class="panel menu"><h2>Controls</h2><p class="muted small">Click a key to change it. Gamepad: stick/D-pad, A jump, X fire, Y grab, B cluck, shoulder button ragdoll. On screen, slide a finger between buttons without lifting.</p><div class="control-grid">${(Object.keys(bindings) as (keyof Input)[]).map(k=>`<label>${k}<button class="ghost bind" data-action="${k}">${rebinding===k?'Press a key…':esc(bindings[k])}</button></label>`).join('')}</div>${button('back','Back','ghost')}</section></main>`; document.querySelectorAll<HTMLButtonElement>('.bind').forEach(b=>b.addEventListener('click',()=>{rebinding=b.dataset.action as keyof Input;render();})); document.querySelector('#back')!.addEventListener('click',()=>{screen='menu';render();}); return; }
   if (!state) return;
