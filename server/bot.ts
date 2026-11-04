@@ -34,7 +34,10 @@ export function botInput(state: GameState, bot: Actor): Input {
 
   const enemy = bot.weapon ? enemies.reduce((best,a)=>Math.abs(a.x-bot.x)+Math.abs(a.y-bot.y)*8 < Math.abs(best.x-bot.x)+Math.abs(best.y-bot.y)*8?a:best) : nearest(bot,enemies)!;
   const availableItems = state.items.filter(item => !item.heldBy);
-  const item = !bot.weapon ? nearest(bot, availableItems) : null;
+  const item = !bot.weapon && !bot.heldBody ? availableItems.reduce<typeof availableItems[number] | null>((best,candidate)=>{
+    const cost=(p:typeof candidate)=>Math.abs(p.x-bot.x)+Math.max(0,bot.y-p.y)*3+Math.max(0,p.y-bot.y)*0.6;
+    return !best||cost(candidate)<cost(best)?candidate:best;
+  },null) : null;
   let goal: {x:number;y:number} = item ?? enemy;
   const enemyDistance = distance(bot, enemy);
   const arena = ARENAS[state.arenaIndex];
@@ -67,9 +70,9 @@ export function botInput(state: GameState, bot: Actor): Input {
   );
   const needsJump = dy < -28 || wallAhead || (!hasSupportAhead && Math.abs(dx) > 52 && bot.grounded);
 
-  input.left = dx < -20;
-  input.right = dx > 20;
-  input.down = !item && dy > 45 && bot.grounded;
+  input.left = dx < (bot.weapon ? -0.2 : -16);
+  input.right = dx > (bot.weapon ? 0.2 : 16);
+  input.down = dy > 45;
   if (memory.escapeTicks > 0) {
     input.left = memory.escapeDirection < 0;
     input.right = memory.escapeDirection > 0;
@@ -80,20 +83,27 @@ export function botInput(state: GameState, bot: Actor): Input {
   else if (bot.flap && dy < -12) input.jump = true;
   else if (!bot.prev.jump && bot.vy > -4 && dy < -28) input.jump = true;
 
-  if (item && distance(bot, item) < 39 && !bot.weapon && !bot.prev.grab) input.grab = true;
-  if (bot.weapon && bot.ammo === 0 && !bot.prev.grab) input.grab = true;
-  if (bot.weapon === 'grenade' && enemyDistance < 95 && availableItems.some(i => i.type !== 'grenade') && !bot.prev.grab) input.grab = true;
-  if (bot.heldBody && enemyDistance < 180 && Math.abs(enemy.y - bot.y) < 70 && !bot.prev.grab) input.grab = true;
+  if (bot.chargeKind !== 'none') {
+    input.up = enemy.y < bot.y - 50 && Math.abs(enemy.x-bot.x) < 65;
+    input.fire = bot.chargeTicks < (bot.chargeKind === 'grenade' ? 18 : 30);
+    return input;
+  }
+  if (item && distance(bot, item) < 39 && !bot.prev.fire) input.fire = true;
+  if (bot.weapon && bot.ammo === 0 && !bot.prev.fire) input.fire = true;
+  if (bot.heldBody && enemyDistance < 180 && Math.abs(enemy.y - bot.y) < 70 && !bot.prev.fire) input.fire = true;
 
-  if (bot.weapon) {
+  if (bot.weapon && bot.ammo > 0) {
     const xDistance = Math.abs(enemy.x - bot.x);
     const yDistance = Math.abs(enemy.y - bot.y);
     const range = bot.weapon === 'submachine' ? 780 : bot.weapon === 'grenade' ? 250 : 800;
-    const facesEnemy = Math.sign(enemy.x - bot.x) === bot.facing;
+    const upwardShot = enemy.y < bot.y - 35 && xDistance < 48;
+    input.up = upwardShot;
+    const facesEnemy = upwardShot || Math.sign(enemy.x - bot.x) === bot.facing;
     const safeGrenade = bot.weapon !== 'grenade' || (enemyDistance > 95 && enemyDistance < 250 && bot.grenadeFuse < 110);
     // Fire through breakable cover to open a path; only permanent geometry blocks the shot.
-    const clearShot = ![...arena.blocks,...arena.platforms].some(b => b.x < Math.max(bot.x,enemy.x) && b.x+b.w > Math.min(bot.x,enemy.x) && b.y < bot.y-15 && b.y+b.h > bot.y-20);
-    if (xDistance < range && yDistance < (bot.weapon==='grenade'?85:42) && facesEnemy && safeGrenade && bot.cooldown <= 0 && (!bot.prev.fire || bot.weapon === 'submachine') && (bot.weapon==='grenade'||clearShot)) input.fire = true;
+    const clearShot = upwardShot || ![...arena.blocks,...arena.platforms].some(b => b.x < Math.max(bot.x,enemy.x) && b.x+b.w > Math.min(bot.x,enemy.x) && b.y < bot.y-15 && b.y+b.h > bot.y-20);
+    if (!clearShot && xDistance < 140 && !bot.prev.jump) input.jump = true;
+    if ((upwardShot || (xDistance < range && yDistance < (bot.weapon==='grenade'?85:42))) && facesEnemy && safeGrenade && bot.cooldown <= 0 && (!bot.prev.fire || bot.weapon === 'submachine') && (bot.weapon==='grenade'||clearShot)) input.fire = true;
     if (bot.weapon === 'grenade' && bot.grenadeFuse > 0 && !bot.prev.fire && enemyDistance > 80) input.fire = true;
   }
 

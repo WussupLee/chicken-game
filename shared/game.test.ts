@@ -53,10 +53,12 @@ describe('match simulation', () => {
     const [a,b] = s.actors;
     a.x = 200; a.y = 504; a.grounded = true;
     b.x = 215; b.y = 504; b.alive = false;
-    tick(s, { a: { ...NO_INPUT, grab: true } });
+    tick(s, { a: { ...NO_INPUT, fire: true } });
     expect(a.heldBody).toBe('b');
     tick(s, { a: NO_INPUT });
-    tick(s, { a: { ...NO_INPUT, grab: true } });
+    tick(s, { a: { ...NO_INPUT, fire: true } });
+    for (let i = 0; i < 12; i++) tick(s, { a: { ...NO_INPUT, fire: true } });
+    tick(s, { a: NO_INPUT });
     expect(a.heldBody).toBeNull();
     expect(b.vx).toBeGreaterThan(5);
   });
@@ -78,7 +80,7 @@ describe('match simulation', () => {
     s.actors = [makeActor('a', 'A', false, 0), makeActor('b', 'B', false, 1)]; startRound(s);
     const a = s.actors[0]; const item = s.items[0];
     a.x = item.x; a.y = item.y + 15; a.grounded = true;
-    tick(s, { a: { ...NO_INPUT, grab: true } });
+    tick(s, { a: { ...NO_INPUT, fire: true } });
     expect(a.weapon).toBe(item.type);
     expect(a.ammo).toBe(item.type === 'pistol' ? 9 : item.type === 'submachine' ? 24 : 3);
     tick(s, { a: NO_INPUT }); tick(s, { a: { ...NO_INPUT, fire: true } });
@@ -89,7 +91,7 @@ describe('match simulation', () => {
   it('allows the submachine gun to fire automatically while fire is held', () => {
     const s = newGame(13);
     s.actors = [makeActor('a', 'A', false, 0), makeActor('b', 'B', false, 1)]; startRound(s);
-    const a = s.actors[0]; a.weapon = 'submachine'; a.ammo = 24; a.y = 300;
+    const a = s.actors[0]; a.weapon = 'submachine'; a.ammo = 24; a.x = 600; a.y = 300;
     for (let i = 0; i < 8; i++) tick(s, { a: { ...NO_INPUT, fire: true } });
     expect(a.ammo).toBe(22);
     expect(s.shots.length).toBeGreaterThan(1);
@@ -100,9 +102,30 @@ describe('match simulation', () => {
     const a=s.actors[0]; a.weapon='grenade';a.ammo=3;
     tick(s,{a:{...NO_INPUT,fire:true}});
     expect(a.grenadeFuse).toBe(150);expect(s.shots).toHaveLength(0);
-    tick(s,{a:NO_INPUT});tick(s,{a:{...NO_INPUT,fire:true}});
+    tick(s,{a:NO_INPUT});tick(s,{a:{...NO_INPUT,fire:true}});tick(s,{a:NO_INPUT});
     expect(a.grenadeFuse).toBe(0);expect(a.ammo).toBe(2);
     expect(s.shots.some(p=>p.kind==='grenade'&&p.ttl>0)).toBe(true);
+  });
+
+  it('aims upward independently of jumping and fires vertically', () => {
+    const s=newGame(40);s.actors=[makeActor('a','A',false,0),makeActor('b','B',false,1)];startRound(s);
+    const a=s.actors[0];a.x=500;a.y=400;a.weapon='pistol';a.ammo=9;
+    tick(s,{a:{...NO_INPUT,up:true,fire:true}});
+    expect(a.aimUp).toBe(true);expect(a.vy).toBeGreaterThanOrEqual(0);
+    expect(s.shots[0].vx).toBe(0);expect(s.shots[0].vy).toBeLessThan(0);
+  });
+
+  it('charges an empty gun throw and disarms a target while preserving its ammo', () => {
+    const s=newGame(41);s.round=1;s.actors=[makeActor('a','A',false,0),makeActor('b','B',false,1)];startRound(s);
+    const [a,b]=s.actors;a.x=400;a.y=504;a.grounded=true;a.weapon='pistol';a.ammo=0;b.x=520;b.y=504;b.grounded=true;b.weapon='submachine';b.ammo=17;
+    tick(s,{a:{...NO_INPUT,fire:true}});
+    for(let i=0;i<45;i++)tick(s,{a:{...NO_INPUT,fire:true}});
+    tick(s,{a:NO_INPUT});
+    expect(a.weapon).toBeNull();expect(s.thrownGuns).toHaveLength(1);
+    expect(s.thrownGuns[0].vx).toBeGreaterThan(15);
+    for(let i=0;i<12&&b.weapon;i++)tick(s,{});
+    expect(b.weapon).toBeNull();
+    expect(s.items.some(item=>item.type==='submachine'&&item.ammo===17&&item.loose)).toBe(true);
   });
 
   it('lets bullets pass through an active slide and hit when it ends', () => {
@@ -115,10 +138,10 @@ describe('match simulation', () => {
   });
 
   it('chips cover and allows a wall jump', () => {
-    const s=newGame(16);s.actors=[makeActor('a','A',false,0),makeActor('b','B',false,1)];startRound(s);
+    const s=newGame(16);s.round=1;s.actors=[makeActor('a','A',false,0),makeActor('b','B',false,1)];startRound(s);
     const c=s.cover[0];s.shots=[{id:902,kind:'pistol',owner:'a',x:c.x-7,y:c.y+10,vx:14,vy:0,ttl:20,radius:3}];
     tick(s,{});expect(c.hp).toBe(2);
-    const a=s.actors[0];a.x=35;a.y=350;a.vx=-4;a.vy=1;a.grounded=false;
+    const a=s.actors[0];a.x=36;a.y=350;a.vx=-4;a.vy=1;a.grounded=false;
     tick(s,{a:{...NO_INPUT,left:true}});expect(a.wall).toBe(-1);
     tick(s,{a:{...NO_INPUT,jump:true,right:true}});expect(a.vy).toBeLessThan(-10);expect(a.vx).toBeGreaterThan(0);
   });
@@ -152,7 +175,8 @@ describe('match simulation', () => {
 
   it('lets a grenade remove several nearby pieces of cover', () => {
     const s=newGame(32);s.actors=[makeActor('a','A',false,0),makeActor('b','B',false,1)];startRound(s);
-    const nearby=s.cover.filter(c=>c.kind==='crate'&&c.y===470&&c.x<300);
+    const nearby=s.cover.filter(c=>c.kind==='crate').slice(0,2);
+    nearby[0].x=220;nearby[0].y=470;nearby[1].x=252;nearby[1].y=470;
     expect(nearby).toHaveLength(2);
     s.shots=[{id:1200,kind:'grenade',owner:'a',x:240,y:487,vx:0,vy:0,ttl:1,radius:5}];
     tick(s,{});
@@ -177,11 +201,11 @@ describe('match simulation', () => {
   });
 
   it('fires at a lined-up opponent and reverses into an escape jump when stuck', () => {
-    const s = newGame(21);
+    const s = newGame(21);s.round=1;
     s.actors = [makeActor('stuck-bot', 'Bot', true, 0), makeActor('target', 'Target', false, 1)]; startRound(s);
     const bot = s.actors[0], target = s.actors[1];
-    bot.weapon = 'pistol'; bot.ammo = 9; bot.x = 300; bot.y = 504; bot.grounded = true; bot.facing = 1;
-    target.x = 390; target.y = 504;
+    bot.weapon = 'pistol'; bot.ammo = 9; bot.x = 400; bot.y = 504; bot.grounded = true; bot.facing = 1;
+    target.x = 500; target.y = 504;
     expect(botInput(s, bot).fire).toBe(true);
     // Keep the target to the right, but hold bot position to simulate a wall
     // or platform edge preventing movement progress.

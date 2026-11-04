@@ -6,65 +6,66 @@ export const COLORS = [0xffdc59, 0xff8484, 0x85ddff, 0xb6f68e];
 export const WEAPONS = ['pistol', 'submachine', 'grenade'] as const;
 export type Weapon = typeof WEAPONS[number];
 export type Phase = 'lobby' | 'round' | 'presenter' | 'intermission' | 'winner';
-export interface Input { left: boolean; right: boolean; down: boolean; jump: boolean; fire: boolean; grab: boolean; ragdoll: boolean; cluck: boolean }
-export const NO_INPUT: Input = { left: false, right: false, down: false, jump: false, fire: false, grab: false, ragdoll: false, cluck: false };
+export interface Input { left: boolean; right: boolean; up: boolean; down: boolean; jump: boolean; fire: boolean; ragdoll: boolean; cluck: boolean }
+export const NO_INPUT: Input = { left: false, right: false, up: false, down: false, jump: false, fire: false, ragdoll: false, cluck: false };
 export interface Box { x: number; y: number; w: number; h: number }
-export interface Actor { id: string; name: string; bot: boolean; slot: number; hat: number; x: number; y: number; vx: number; vy: number; rotation: number; angularVelocity: number; facing: number; alive: boolean; ragdoll: boolean; grounded: boolean; crouch: boolean; sliding: boolean; flap: boolean; wall: number; jumpGrace: number; jumpBuffer: number; slideTicks: number; grenadeFuse: number; emptyTicks: number; weapon: Weapon | null; heldBody: string | null; ammo: number; wins: number; prev: Input; cooldown: number; cluck: boolean }
-export interface Item { id: number; type: Weapon; x: number; y: number; heldBy: string | null }
+export interface Actor { id: string; name: string; bot: boolean; slot: number; hat: number; x: number; y: number; vx: number; vy: number; rotation: number; angularVelocity: number; facing: number; aimUp: boolean; alive: boolean; ragdoll: boolean; grounded: boolean; crouch: boolean; sliding: boolean; flap: boolean; wall: number; jumpGrace: number; jumpBuffer: number; slideTicks: number; grenadeFuse: number; emptyTicks: number; chargeKind: 'none' | 'gun' | 'body' | 'grenade'; chargeTicks: number; weapon: Weapon | null; heldBody: string | null; ammo: number; wins: number; prev: Input; cooldown: number; cluck: boolean }
+export interface Item { id: number; type: Weapon; x: number; y: number; ammo: number; heldBy: string | null; loose?: boolean; vx?: number; vy?: number }
 export interface Shot { id: number; kind: Weapon; owner: string; x: number; y: number; vx: number; vy: number; ttl: number; radius: number }
+export interface ThrownGun { id: number; type: Exclude<Weapon, 'grenade'>; owner: string; x: number; y: number; vx: number; vy: number; rotation: number; angularVelocity: number; spent: boolean }
 export type CoverKind = 'crate' | 'door' | 'wall';
 export interface CoverSeed extends Box { kind: CoverKind }
 export interface Cover extends CoverSeed { hp: number; maxHp: number }
 export interface Effect { id: number; type: 'shot' | 'hit' | 'blast' | 'dust' | 'empty' | 'pin' | 'jump'; x: number; y: number; ttl: number }
-export interface Arena { name: string; blocks: Box[]; platforms: Box[]; spawns: { x: number; y: number }[]; itemSpawns: { x: number; y: number }[]; cover: CoverSeed[]; openSides?: boolean }
-export interface GameState { phase: Phase; round: number; timer: number; phaseTimer: number; arenaIndex: number; actors: Actor[]; items: Item[]; shots: Shot[]; cover: Cover[]; effects: Effect[]; message: string; winnerId: string | null; seed: number }
+export interface Arena { name: string; theme: 'forest' | 'industrial' | 'space'; blocks: Box[]; platforms: Box[]; spawns: { x: number; y: number }[]; itemSpawns: { x: number; y: number }[]; cover: CoverSeed[]; openSides?: boolean }
+export interface GameState { phase: Phase; round: number; timer: number; phaseTimer: number; arenaIndex: number; actors: Actor[]; items: Item[]; shots: Shot[]; thrownGuns: ThrownGun[]; cover: Cover[]; effects: Effect[]; message: string; winnerId: string | null; seed: number }
 
 const floor = (y = 504): Box => ({ x: 0, y, w: WIDTH, h: HEIGHT - y });
 const block = (x: number, y: number, w: number, h = 18): Box => ({ x, y, w, h });
 const crate = (x: number, y: number, w = 34, h = 34): CoverSeed => ({ ...block(x, y, w, h), kind: 'crate' });
 const door = (x: number, y: number, h = 76): CoverSeed => ({ ...block(x, y, 26, h), kind: 'door' });
 const wall = (x: number, y: number, w: number, h: number): CoverSeed => ({ ...block(x, y, w, h), kind: 'wall' });
-const baseSpawns = [{ x: 104, y: 435 }, { x: 840, y: 435 }, { x: 285, y: 270 }, { x: 655, y: 270 }];
-function arena(name: string, blocks: Box[], platforms: Box[], itemSpawns: { x: number; y: number }[], cover: CoverSeed[], spawns = baseSpawns, openSides = false): Arena { return { name, blocks, platforms, spawns, itemSpawns, cover, openSides }; }
+function arena(name: string, theme: Arena['theme'], blocks: Box[], platforms: Box[], itemSpawns: { x: number; y: number }[], cover: CoverSeed[], spawns: { x: number; y: number }[], openSides = false): Arena { return { name, theme, blocks, platforms, spawns, itemSpawns, cover, openSides }; }
 export const ARENAS: Arena[] = [
-  arena('The Coop',
-    [floor(),block(0,150,22,354),block(938,150,22,354),block(455,446,50,58)],
-    [block(75,420,190),block(695,420,190),block(190,335,210),block(560,335,210),block(370,270,220),block(75,200,170),block(715,200,170),block(400,125,160)],
-    [{x:115,y:489},{x:305,y:320},{x:430,y:255},{x:545,y:255},{x:665,y:320},{x:845,y:489}],
-    [crate(180,470),crate(265,470),crate(660,470),crate(775,470),door(335,428),door(600,428),crate(205,304,30,31),crate(725,304,30,31),wall(257,255,28,80),wall(680,255,28,80),door(465,194,76),crate(105,166,30),crate(825,166,30),wall(435,75,26,50)],
-    [{x:104,y:504},{x:840,y:504},{x:300,y:335},{x:660,y:335}]),
-  arena('Sky Roost',
-    [],
-    [block(80,470,240,24),block(360,470,240,24),block(640,470,240,24),block(140,365,200),block(620,365,200),block(370,350,220),block(85,255,190),block(385,240,190),block(685,255,190),block(390,145,180)],
-    [{x:155,y:455},{x:475,y:455},{x:805,y:455},{x:255,y:350},{x:705,y:350},{x:480,y:130}],
-    [crate(245,436),crate(680,436),crate(400,436),door(365,394),door(590,394),crate(160,331,30),crate(765,331,30),wall(315,290,24,75),wall(620,290,24,75),crate(135,221,30),crate(810,221,30),door(450,164,76),crate(530,111,34,34)],
-    [{x:140,y:470},{x:810,y:470},{x:245,y:365},{x:715,y:365}],true),
-  arena('The Silo',
-    [floor(),block(60,235,28,269),block(872,235,28,269),block(465,440,30,64)],
-    [block(90,420,230),block(640,420,230),block(310,350,340),block(130,275,195),block(635,275,195),block(375,230,210),block(390,165,180)],
-    [{x:150,y:405},{x:770,y:405},{x:480,y:335},{x:230,y:260},{x:730,y:260},{x:480,y:150}],
-    [crate(155,470),crate(250,470),crate(680,470),crate(775,470),door(335,428),door(600,428),wall(310,305,25,45),wall(625,305,25,45),crate(375,316),crate(555,316),door(280,199,76),door(655,199,76),crate(145,241),crate(785,241),wall(455,183,26,47)],
-    [{x:150,y:504},{x:810,y:504},{x:230,y:275},{x:730,y:275}])
+  arena('Canopy Clash','forest',
+    [block(125,500,300,40),block(455,500,235,40),block(785,500,175,40),block(175,300,22,200),block(315,300,22,200),block(710,350,32,150)],
+    [block(0,440,100),block(70,375,165),block(180,295,170),block(405,390,115),block(565,350,395),block(490,230,330),block(770,165,150)],
+    [{x:250,y:485},{x:575,y:485},{x:655,y:335},{x:280,y:280},{x:600,y:215},{x:825,y:150}],
+    [crate(350,466),crate(475,466),crate(810,466),door(390,424),wall(685,300,26,50),crate(570,316),crate(880,316),wall(500,180,25,50),door(760,154),crate(210,261),crate(92,341),wall(315,225,22,70),crate(710,196)],
+    [{x:230,y:500},{x:570,y:500},{x:660,y:350},{x:270,y:295}],true),
+  arena('Factory Frenzy','industrial',
+    [floor(),block(0,0,24,504),block(936,0,24,504)],
+    [block(30,110,325),block(605,110,325),block(30,250,325),block(605,250,325),block(395,185,170),block(30,390,325),block(605,390,325),block(385,335,190),block(425,80,110)],
+    [{x:125,y:489},{x:835,y:489},{x:250,y:375},{x:710,y:375},{x:480,y:320},{x:480,y:170}],
+    [crate(250,470),crate(680,470),door(350,428),door(584,428),crate(60,216),crate(865,216),wall(210,185,24,65),wall(750,185,24,65),crate(305,76),crate(620,76),door(430,259),door(505,109),crate(55,356),crate(865,356),wall(395,285,24,50)],
+    [{x:110,y:504},{x:850,y:504},{x:100,y:250},{x:860,y:250}]),
+  arena('Orbital Nest','space',
+    [floor()],
+    [block(0,145,710),block(740,90,135),block(110,285,210),block(405,285,210),block(750,370,210),block(355,390,120),block(70,430,190),block(565,430,150)],
+    [{x:120,y:489},{x:860,y:489},{x:200,y:270},{x:500,y:270},{x:800,y:355},{x:800,y:75}],
+    [crate(260,466),crate(490,466),crate(690,466),door(335,424),wall(615,430,25,70),crate(150,251),crate(545,251),door(300,209),door(610,209),wall(750,310,25,60),crate(820,336),crate(840,56),wall(440,95,25,50),crate(90,111)],
+    [{x:110,y:500},{x:875,y:500},{x:200,y:285},{x:500,y:285}])
 ];
 
 let nextId = 1;
 export function makeActor(id: string, name: string, bot: boolean, slot: number): Actor {
-  return { id, name: name.slice(0, 18), bot, slot, hat: 0, x: 0, y: 0, vx: 0, vy: 0, rotation: 0, angularVelocity: 0, facing: slot % 2 ? -1 : 1, alive: true, ragdoll: false, grounded: false, crouch: false, sliding: false, flap: false, wall: 0, jumpGrace: 0, jumpBuffer: 0, slideTicks: 0, grenadeFuse: 0, emptyTicks: 0, weapon: null, heldBody: null, ammo: 0, wins: 0, prev: { ...NO_INPUT }, cooldown: 0, cluck: false };
+  return { id, name: name.slice(0, 18), bot, slot, hat: 0, x: 0, y: 0, vx: 0, vy: 0, rotation: 0, angularVelocity: 0, facing: slot % 2 ? -1 : 1, aimUp: false, alive: true, ragdoll: false, grounded: false, crouch: false, sliding: false, flap: false, wall: 0, jumpGrace: 0, jumpBuffer: 0, slideTicks: 0, grenadeFuse: 0, emptyTicks: 0, chargeKind: 'none', chargeTicks: 0, weapon: null, heldBody: null, ammo: 0, wins: 0, prev: { ...NO_INPUT }, cooldown: 0, cluck: false };
 }
-export function newGame(seed = Date.now()): GameState { return { phase: 'lobby', round: 0, timer: 0, phaseTimer: 0, arenaIndex: 0, actors: [], items: [], shots: [], cover: [], effects: [], message: '', winnerId: null, seed }; }
+export function newGame(seed = Date.now()): GameState { return { phase: 'lobby', round: 0, timer: 0, phaseTimer: 0, arenaIndex: 0, actors: [], items: [], shots: [], thrownGuns: [], cover: [], effects: [], message: '', winnerId: null, seed }; }
 function nextRandom(s: GameState): number { s.seed = (Math.imul(s.seed, 1664525) + 1013904223) >>> 0; return s.seed / 4294967296; }
 const overlap = (a: Box, b: Box) => a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
 const actorBox = (a: Actor): Box => ({ x: a.x - 11, y: a.y - (a.ragdoll || a.crouch ? 15 : 27), w: 22, h: a.ragdoll || a.crouch ? 15 : 27 });
 export function startRound(s: GameState): void {
-  s.phase = 'round'; s.round++; s.timer = 45; s.phaseTimer = 0; s.arenaIndex = (s.round - 1) % ARENAS.length; s.shots = [];
+  s.phase = 'round'; s.round++; s.timer = 45; s.phaseTimer = 0; s.arenaIndex = (s.round - 1) % ARENAS.length; s.shots = []; s.thrownGuns = [];
   const arena = ARENAS[s.arenaIndex];
   s.cover = arena.cover.map(c => { const hp = c.kind === 'wall' ? 5 : c.kind === 'door' ? 4 : 3; return { ...c, hp, maxHp: hp }; }); s.effects = [];
-  s.items = arena.itemSpawns.map((p) => ({ id: nextId++, type: WEAPONS[Math.floor(nextRandom(s) * WEAPONS.length)], x: p.x, y: p.y, heldBy: null }));
-  s.actors.forEach((a, i) => { const p = arena.spawns[i]; Object.assign(a, { x: p.x, y: p.y, vx: 0, vy: 0, rotation: 0, angularVelocity: 0, facing: i % 2 ? -1 : 1, alive: true, ragdoll: false, grounded: false, crouch: false, sliding: false, flap: false, wall: 0, jumpGrace: 0, jumpBuffer: 0, slideTicks: 0, grenadeFuse: 0, emptyTicks: 0, weapon: null, heldBody: null, ammo: 0, cooldown: 0, prev: { ...NO_INPUT } }); });
+  s.items = arena.itemSpawns.map((p) => { const type = WEAPONS[Math.floor(nextRandom(s) * WEAPONS.length)]; return { id: nextId++, type, x: p.x, y: p.y, ammo: ammoFor(type), heldBy: null }; });
+  s.actors.forEach((a, i) => { const p = arena.spawns[i]; Object.assign(a, { x: p.x, y: p.y, vx: 0, vy: 0, rotation: 0, angularVelocity: 0, facing: i % 2 ? -1 : 1, aimUp: false, alive: true, ragdoll: false, grounded: false, crouch: false, sliding: false, flap: false, wall: 0, jumpGrace: 0, jumpBuffer: 0, slideTicks: 0, grenadeFuse: 0, emptyTicks: 0, chargeKind: 'none', chargeTicks: 0, weapon: null, heldBody: null, ammo: 0, cooldown: 0, prev: { ...NO_INPUT } }); });
   s.message = arena.name;
 }
 function move(a: Actor, input: Input, arena: Arena, cover: Cover[], effects: Effect[]): void {
   const oldY = a.y, wasGrounded = a.grounded, oldWall = a.wall;
+  a.aimUp = input.up;
   const solids = [...arena.blocks, ...cover];
   if (input.jump && !a.prev.jump) a.jumpBuffer = 6;
   else a.jumpBuffer = Math.max(0, a.jumpBuffer - 1);
@@ -108,19 +109,18 @@ export const WEAPON_STATS: Record<Weapon, { ammo: number; cooldown: number; proj
 };
 const ammoFor = (w: Weapon): number => WEAPON_STATS[w].ammo;
 function shoot(s: GameState, a: Actor): void {
-  if (!a.weapon || a.cooldown > 0 || a.ammo <= 0) return;
+  if (!a.weapon || a.weapon === 'grenade' || a.cooldown > 0 || a.ammo <= 0) return;
   const w = a.weapon;
-  if (w === 'grenade' && !a.grenadeFuse) { a.grenadeFuse = 150; s.effects.push({ id: nextId++, type: 'pin', x: a.x, y: a.y - 18, ttl: 12 }); return; }
   a.cooldown = WEAPON_STATS[w].cooldown;
   a.ammo--;
   const speed = WEAPON_STATS[w].projectileSpeed;
-  s.shots.push({ id: nextId++, kind: w, owner: a.id, x: a.x + a.facing * 17, y: a.y - 18, vx: a.facing * speed, vy: w === 'grenade' ? -5 : 0, ttl: w === 'grenade' ? a.grenadeFuse : 90, radius: w === 'grenade' ? 5 : 3 });
-  s.effects.push({ id: nextId++, type: 'shot', x: a.x + a.facing * 22, y: a.y - 18, ttl: 8 });
-  a.grenadeFuse = 0;
-  a.vx -= a.facing * 0.2;
+  const x = a.x + (a.aimUp ? 0 : a.facing * 17), y = a.y - (a.aimUp ? 32 : 18);
+  s.shots.push({ id: nextId++, kind: w, owner: a.id, x, y, vx: a.aimUp ? 0 : a.facing * speed, vy: a.aimUp ? -speed : 0, ttl: 90, radius: 3 });
+  s.effects.push({ id: nextId++, type: 'shot', x, y, ttl: 8 });
+  if (!a.aimUp) a.vx -= a.facing * 0.2;
   if (a.ammo <= 0) { a.emptyTicks = 45; s.effects.push({ id: nextId++, type: 'empty', x: a.x, y: a.y - 18, ttl: 12 }); }
 }
-function kill(victim: Actor, attacker?: Actor): void { victim.alive = false; victim.ragdoll = true; victim.flap = false; victim.weapon = null; victim.ammo = 0; victim.heldBody = null; victim.vx = (attacker?.facing ?? 1) * 3; victim.vy = -4; victim.rotation = 0; victim.angularVelocity = (attacker?.facing ?? 1) * 0.17; }
+function kill(victim: Actor, attacker?: Actor): void { victim.alive = false; victim.ragdoll = true; victim.flap = false; victim.weapon = null; victim.ammo = 0; victim.heldBody = null; victim.chargeKind = 'none'; victim.chargeTicks = 0; victim.vx = (attacker?.facing ?? 1) * 3; victim.vy = -4; victim.rotation = 0; victim.angularVelocity = (attacker?.facing ?? 1) * 0.17; }
 function blast(s: GameState, x: number, y: number, owner: string, radius: number): void {
   const attacker = s.actors.find(a => a.id === owner);
   for (const a of s.actors) if (a.alive && Math.hypot(a.x - x, a.y - 15 - y) < radius) kill(a, attacker);
@@ -149,22 +149,79 @@ function updateShots(s: GameState, arena: Arena): void {
   }
   s.shots = s.shots.filter(p => p.ttl > 0);
 }
+function updateLooseItems(s: GameState, arena: Arena): void {
+  for (const item of s.items) if (item.loose) {
+    const oldY = item.y;
+    item.vy = Math.min(12, (item.vy ?? 0) + 0.42);
+    item.x += item.vx ?? 0; item.y += item.vy;
+    for (const b of [...arena.blocks, ...arena.platforms, ...s.cover]) if (item.x > b.x - 8 && item.x < b.x + b.w + 8 && oldY <= b.y && item.y >= b.y) {
+      item.y = b.y - 8; item.vy = Math.abs(item.vy) > 2 ? -item.vy * 0.25 : 0; item.vx = (item.vx ?? 0) * 0.72; break;
+    }
+    item.vx = (item.vx ?? 0) * 0.985;
+  }
+  s.items = s.items.filter(item => !item.loose || (item.y < HEIGHT + 30 && item.x > -30 && item.x < WIDTH + 30));
+}
+function updateThrownGuns(s: GameState, arena: Arena): void {
+  for (const gun of s.thrownGuns) {
+    const oldX = gun.x, oldY = gun.y;
+    gun.x += gun.vx; gun.y += gun.vy; gun.vy = Math.min(13, gun.vy + 0.35);
+    gun.rotation += gun.angularVelocity; gun.angularVelocity *= 0.99;
+    for (const b of [...arena.blocks, ...arena.platforms, ...s.cover]) if (overlap({x:gun.x-7,y:gun.y-5,w:14,h:10},b)) {
+      if (oldY + 5 <= b.y && gun.vy >= 0) { gun.y = b.y - 5; gun.vy = Math.abs(gun.vy) > 2 ? -gun.vy * 0.3 : 0; gun.vx *= 0.72; }
+      else if (!arena.platforms.includes(b)) { gun.x = oldX; gun.vx *= -0.45; }
+      break;
+    }
+    gun.vx *= 0.992;
+    if (!gun.spent) for (const target of s.actors) if (target.alive && target.id !== gun.owner && Math.abs(target.x-gun.x)<20 && Math.abs(target.y-18-gun.y)<20) {
+      gun.spent = true; target.vx += gun.vx * 0.35;
+      if (target.weapon) {
+        s.items.push({id:nextId++,type:target.weapon,x:target.x,y:target.y-22,ammo:target.ammo,heldBy:null,loose:true,vx:gun.vx*0.25,vy:-4});
+        target.weapon = null; target.ammo = 0; target.grenadeFuse = 0; target.chargeKind = 'none'; target.chargeTicks = 0;
+      }
+      s.effects.push({id:nextId++,type:'hit',x:gun.x,y:gun.y,ttl:10});
+      gun.vx *= -0.35; gun.vy = -3;
+      break;
+    }
+  }
+  s.thrownGuns = s.thrownGuns.filter(gun => gun.y < HEIGHT + 40 && gun.x > -40 && gun.x < WIDTH + 40);
+}
+function releaseThrow(s: GameState, a: Actor): void {
+  const power = Math.min(1, a.chargeTicks / 45);
+  const upward = a.aimUp;
+  if (a.chargeKind === 'gun' && a.weapon && a.weapon !== 'grenade') {
+    const speed = 7 + 10 * power;
+    s.thrownGuns.push({id:nextId++,type:a.weapon,owner:a.id,x:a.x+(upward?0:a.facing*18),y:a.y-(upward?31:18),vx:upward?0:a.facing*speed,vy:upward?-speed:-2-power,rotation:0,angularVelocity:a.facing*(0.15+power*0.2),spent:false});
+    a.weapon = null; a.ammo = 0; a.emptyTicks = 0;
+  } else if (a.chargeKind === 'body' && a.heldBody) {
+    const body = s.actors.find(other => other.id === a.heldBody);
+    if (body) {const speed=6+9*power;body.x=a.x+(upward?0:a.facing*28);body.y=a.y-16;body.vx=upward?0:a.facing*speed;body.vy=upward?-speed:-5-power*3;body.angularVelocity=a.facing*(0.2+power*0.25);}
+    a.heldBody = null;
+  } else if (a.chargeKind === 'grenade' && a.weapon === 'grenade' && a.ammo > 0 && a.grenadeFuse > 0) {
+    const speed = 6 + 8 * power;
+    s.shots.push({id:nextId++,kind:'grenade',owner:a.id,x:a.x+(upward?0:a.facing*17),y:a.y-(upward?30:18),vx:upward?0:a.facing*speed,vy:upward?-speed:-5-power*3,ttl:a.grenadeFuse,radius:5});
+    s.effects.push({id:nextId++,type:'shot',x:a.x,y:a.y-18,ttl:8});
+    a.grenadeFuse = 0; a.ammo--; a.cooldown = WEAPON_STATS.grenade.cooldown;
+    if (a.ammo <= 0) a.weapon = null;
+  }
+  a.chargeKind = 'none'; a.chargeTicks = 0;
+}
 function interact(s: GameState, a: Actor, input: Input): void {
   if (input.ragdoll && !a.prev.ragdoll) { a.ragdoll = !a.ragdoll; a.flap = false; }
   if (a.ragdoll && a.cooldown <= 0 && !input.ragdoll && !a.prev.ragdoll && a.grounded) a.ragdoll = false;
-  if (input.grab && !a.prev.grab && !a.ragdoll) {
-    if (a.heldBody) { const body = s.actors.find(other => other.id === a.heldBody); if (body) { body.vx = a.facing * 10; body.vy = -5; body.x = a.x + a.facing * 28; body.y = a.y - 15; body.angularVelocity = a.facing * 0.32; } a.heldBody = null; }
-    else if (a.weapon) { a.weapon = null; a.ammo = 0; a.grenadeFuse = 0; a.emptyTicks = 0; }
-    else {
-      const item = s.items.find(it => !it.heldBy && Math.hypot(it.x - a.x, it.y - (a.y - 15)) < 38);
-      if (item) { a.weapon = item.type; a.ammo = ammoFor(item.type); s.items = s.items.filter(it => it !== item); }
-      else {
-        const body = s.actors.find(other => !other.alive && other.id !== a.id && Math.hypot(other.x - a.x, other.y - a.y) < 36);
-        if (body && !s.actors.some(other => other.heldBody === body.id)) { a.heldBody = body.id; body.vx = 0; body.vy = 0; body.angularVelocity = 0; }
-      }
-    }
-  }
-  if (input.fire && (!a.prev.fire || a.weapon === 'submachine')) { if (a.weapon && a.ammo <= 0 && !a.prev.fire) s.effects.push({ id: nextId++, type: 'empty', x: a.x, y: a.y - 18, ttl: 12 }); else shoot(s, a); }
+  if (!input.fire && a.prev.fire && a.chargeKind !== 'none') releaseThrow(s,a);
+  if (input.fire && !a.prev.fire && !a.ragdoll) {
+    if (a.heldBody) { a.chargeKind='body'; a.chargeTicks=0; }
+    else if (!a.weapon) {
+      const item=s.items.find(it=>!it.heldBy && Math.hypot(it.x-a.x,it.y-(a.y-15))<38);
+      if (item) {a.weapon=item.type;a.ammo=item.ammo;s.items=s.items.filter(it=>it!==item);}
+      else {const body=s.actors.find(other=>!other.alive&&other.id!==a.id&&Math.hypot(other.x-a.x,other.y-a.y)<36&&!s.actors.some(holder=>holder.heldBody===other.id));if(body){a.heldBody=body.id;body.vx=0;body.vy=0;body.angularVelocity=0;}}
+    } else if (a.weapon==='grenade' && a.ammo>0) {
+      if (!a.grenadeFuse) {a.grenadeFuse=150;s.effects.push({id:nextId++,type:'pin',x:a.x,y:a.y-18,ttl:12});}
+      else {a.chargeKind='grenade';a.chargeTicks=0;}
+    } else if (a.ammo<=0) {a.chargeKind='gun';a.chargeTicks=0;}
+    else shoot(s,a);
+  } else if (input.fire && a.prev.fire && a.weapon==='submachine' && a.ammo>0 && a.chargeKind==='none' && !a.ragdoll) shoot(s,a);
+  if (input.fire && a.chargeKind!=='none') a.chargeTicks=Math.min(45,a.chargeTicks+1);
   a.cluck = input.cluck;
 }
 export function tick(s: GameState, inputs: Record<string, Input>): void {
@@ -213,12 +270,14 @@ export function tick(s: GameState, inputs: Record<string, Input>): void {
       continue;
     }
     const input = inputs[a.id] ?? NO_INPUT;
-    if (a.grenadeFuse > 0 && --a.grenadeFuse === 0) { blast(s,a.x,a.y-18,a.id,65); a.ammo--; if (a.ammo <= 0) a.emptyTicks = 45; if (!a.alive) continue; }
-    if (a.emptyTicks > 0 && --a.emptyTicks === 0) { a.weapon = null; a.ammo = 0; }
+    if (a.grenadeFuse > 0 && --a.grenadeFuse === 0) { blast(s,a.x,a.y-18,a.id,65); a.ammo--; a.chargeKind='none'; a.chargeTicks=0; if (a.ammo <= 0) a.weapon=null; if (!a.alive) continue; }
+    if (a.emptyTicks > 0) a.emptyTicks--;
     move(a, input, ar, s.cover, s.effects); interact(s, a, input); a.prev = { ...input };
     if (a.grounded && !a.sliding && Math.abs(a.vx) > 4 && Math.floor(s.timer*60)%9===0) s.effects.push({id:nextId++,type:'dust',x:a.x-a.facing*8,y:a.y,ttl:8});
   }
   updateShots(s, ar);
+  updateThrownGuns(s, ar);
+  updateLooseItems(s, ar);
   s.effects = s.effects.filter(e => --e.ttl > 0);
   s.timer -= TICK;
   const living = s.actors.filter(a => a.alive);
