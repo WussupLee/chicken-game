@@ -18,7 +18,7 @@ export interface CoverSeed extends Box { kind: CoverKind }
 export interface Cover extends CoverSeed { hp: number; maxHp: number }
 export interface Effect { id: number; type: 'shot' | 'hit' | 'blast' | 'dust' | 'empty' | 'pin' | 'jump'; x: number; y: number; ttl: number }
 export interface Arena { name: string; theme: 'forest' | 'industrial' | 'space'; blocks: Box[]; platforms: Box[]; spawns: { x: number; y: number }[]; itemSpawns: { x: number; y: number }[]; cover: CoverSeed[]; openSides?: boolean }
-export interface GameState { phase: Phase; round: number; timer: number; phaseTimer: number; arenaIndex: number; actors: Actor[]; items: Item[]; shots: Shot[]; thrownGuns: ThrownGun[]; cover: Cover[]; effects: Effect[]; message: string; winnerId: string | null; seed: number }
+export interface GameState { phase: Phase; round: number; timer: number; phaseTimer: number; arenaIndex: number; spawnOffsets: number[]; actors: Actor[]; items: Item[]; shots: Shot[]; thrownGuns: ThrownGun[]; cover: Cover[]; effects: Effect[]; message: string; winnerId: string | null; seed: number }
 
 const floor = (y = 504): Box => ({ x: 0, y, w: WIDTH, h: HEIGHT - y });
 const block = (x: number, y: number, w: number, h = 18): Box => ({ x, y, w, h });
@@ -28,7 +28,7 @@ const wall = (x: number, y: number, w: number, h: number): CoverSeed => ({ ...bl
 function arena(name: string, theme: Arena['theme'], blocks: Box[], platforms: Box[], itemSpawns: { x: number; y: number }[], cover: CoverSeed[], spawns: { x: number; y: number }[], openSides = false): Arena { return { name, theme, blocks, platforms, spawns, itemSpawns, cover, openSides }; }
 export const ARENAS: Arena[] = [
   arena('Canopy Clash','forest',
-    [block(125,500,300,40),block(455,500,235,40),block(785,500,175,40),block(175,300,22,200),block(315,300,22,200),block(710,350,32,150)],
+    [block(125,500,300,40),block(455,500,235,40),block(785,500,175,40),block(710,350,32,150)],
     [block(0,440,100),block(70,375,165),block(180,295,170),block(405,390,115),block(565,350,395),block(490,230,330),block(770,165,150)],
     [{x:250,y:485},{x:575,y:485},{x:655,y:335},{x:280,y:280},{x:600,y:215},{x:825,y:150}],
     [crate(350,466),crate(475,466),crate(810,466),door(390,424),wall(685,300,26,50),crate(570,316),crate(880,316),wall(500,180,25,50),door(760,154),crate(210,261),crate(92,341),wall(315,225,22,70),crate(710,196)],
@@ -51,16 +51,21 @@ let nextId = 1;
 export function makeActor(id: string, name: string, bot: boolean, slot: number): Actor {
   return { id, name: name.slice(0, 18), bot, slot, hat: 0, x: 0, y: 0, vx: 0, vy: 0, rotation: 0, angularVelocity: 0, facing: slot % 2 ? -1 : 1, aimUp: false, alive: true, ragdoll: false, grounded: false, crouch: false, sliding: false, flap: false, wall: 0, jumpGrace: 0, jumpBuffer: 0, slideTicks: 0, grenadeFuse: 0, emptyTicks: 0, chargeKind: 'none', chargeTicks: 0, weapon: null, heldBody: null, ammo: 0, wins: 0, prev: { ...NO_INPUT }, cooldown: 0, cluck: false };
 }
-export function newGame(seed = Date.now()): GameState { return { phase: 'lobby', round: 0, timer: 0, phaseTimer: 0, arenaIndex: 0, actors: [], items: [], shots: [], thrownGuns: [], cover: [], effects: [], message: '', winnerId: null, seed }; }
+export function newGame(seed = Date.now()): GameState { return { phase: 'lobby', round: 0, timer: 0, phaseTimer: 0, arenaIndex: 0, spawnOffsets: [], actors: [], items: [], shots: [], thrownGuns: [], cover: [], effects: [], message: '', winnerId: null, seed }; }
 function nextRandom(s: GameState): number { s.seed = (Math.imul(s.seed, 1664525) + 1013904223) >>> 0; return s.seed / 4294967296; }
 const overlap = (a: Box, b: Box) => a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
 const actorBox = (a: Actor): Box => ({ x: a.x - 11, y: a.y - (a.ragdoll || a.crouch ? 15 : 27), w: 22, h: a.ragdoll || a.crouch ? 15 : 27 });
 export function startRound(s: GameState): void {
   s.phase = 'round'; s.round++; s.timer = 45; s.phaseTimer = 0; s.arenaIndex = (s.round - 1) % ARENAS.length; s.shots = []; s.thrownGuns = [];
   const arena = ARENAS[s.arenaIndex];
+  const previousOffset = s.spawnOffsets[s.arenaIndex];
+  const spawnOffset = previousOffset === undefined
+    ? Math.floor(nextRandom(s) * arena.spawns.length)
+    : (previousOffset + 1 + Math.floor(nextRandom(s) * (arena.spawns.length - 1))) % arena.spawns.length;
+  s.spawnOffsets[s.arenaIndex] = spawnOffset;
   s.cover = arena.cover.map(c => { const hp = c.kind === 'wall' ? 5 : c.kind === 'door' ? 4 : 3; return { ...c, hp, maxHp: hp }; }); s.effects = [];
   s.items = arena.itemSpawns.map((p) => { const type = WEAPONS[Math.floor(nextRandom(s) * WEAPONS.length)]; return { id: nextId++, type, x: p.x, y: p.y, ammo: ammoFor(type), heldBy: null }; });
-  s.actors.forEach((a, i) => { const p = arena.spawns[i]; Object.assign(a, { x: p.x, y: p.y, vx: 0, vy: 0, rotation: 0, angularVelocity: 0, facing: i % 2 ? -1 : 1, aimUp: false, alive: true, ragdoll: false, grounded: false, crouch: false, sliding: false, flap: false, wall: 0, jumpGrace: 0, jumpBuffer: 0, slideTicks: 0, grenadeFuse: 0, emptyTicks: 0, chargeKind: 'none', chargeTicks: 0, weapon: null, heldBody: null, ammo: 0, cooldown: 0, prev: { ...NO_INPUT } }); });
+  s.actors.forEach((a, i) => { const p = arena.spawns[(i + spawnOffset) % arena.spawns.length]; Object.assign(a, { x: p.x, y: p.y, vx: 0, vy: 0, rotation: 0, angularVelocity: 0, facing: i % 2 ? -1 : 1, aimUp: false, alive: true, ragdoll: false, grounded: false, crouch: false, sliding: false, flap: false, wall: 0, jumpGrace: 0, jumpBuffer: 0, slideTicks: 0, grenadeFuse: 0, emptyTicks: 0, chargeKind: 'none', chargeTicks: 0, weapon: null, heldBody: null, ammo: 0, cooldown: 0, prev: { ...NO_INPUT } }); });
   s.message = arena.name;
 }
 function move(a: Actor, input: Input, arena: Arena, cover: Cover[], effects: Effect[]): void {

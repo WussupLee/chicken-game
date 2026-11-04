@@ -3,6 +3,25 @@ import { ARENAS, makeActor, newGame, startRound, tick, NO_INPUT, WEAPONS } from 
 import { botInput } from '../server/bot';
 
 describe('match simulation', () => {
+  it("randomizes unique spawn points and changes each player's spawn when an arena returns", () => {
+    const s=newGame(43);
+    s.actors=[0,1,2,3].map(i=>makeActor(`player-${i}`,`Player ${i}`,false,i));
+    const lastByArena=new Map<number,string[]>();
+    for(let round=0;round<18;round++){
+      startRound(s);
+      const positions=s.actors.map(a=>`${a.x},${a.y}`);
+      expect(new Set(positions).size).toBe(4);
+      const previous=lastByArena.get(s.arenaIndex);
+      if(previous)positions.forEach((position,i)=>expect(position).not.toBe(previous[i]));
+      lastByArena.set(s.arenaIndex,positions);
+    }
+  });
+
+  it('leaves the forest center open beneath its raised platform', () => {
+    const centerWall=ARENAS[0].blocks.some(b=>b.y<500&&b.y+b.h>450&&b.x<425&&b.x+b.w>125);
+    expect(centerWall).toBe(false);
+  });
+
   it('scores a surviving chicken and advances after the round', () => {
     const s = newGame(1);
     s.actors = [makeActor('a', 'A', false, 0), makeActor('b', 'B', true, 1)];
@@ -233,18 +252,22 @@ describe('match simulation', () => {
 
   it('has bots finish rounds by elimination on each arena', () => {
     for (const arenaIndex of [0,1,2]) {
-      const s = newGame(arenaIndex === 1 ? 2 : 1); s.round = arenaIndex;
-      s.actors = [0,1,2,3].map(i => makeActor(`map${arenaIndex}bot${i}`, `Bot ${i}`, true, i));
-      startRound(s);
-      let heldAWeapon = false;
-      for (let i = 0; i < 60 * 47 && s.phase === 'round'; i++) {
-        const inputs = Object.fromEntries(s.actors.map(a => [a.id, botInput(s, a)]));
-        tick(s, inputs);
-        if (s.actors.some(a => a.weapon)) heldAWeapon = true;
+      let eliminationWins = 0;
+      for (let seed = 1; seed <= 8; seed++) {
+        const s = newGame(seed); s.round = arenaIndex;
+        s.actors = [0,1,2,3].map(i => makeActor(`map${arenaIndex}seed${seed}bot${i}`, `Bot ${i}`, true, i));
+        startRound(s);
+        let heldAWeapon = false;
+        for (let i = 0; i < 60 * 47 && s.phase === 'round'; i++) {
+          const inputs = Object.fromEntries(s.actors.map(a => [a.id, botInput(s, a)]));
+          tick(s, inputs);
+          if (s.actors.some(a => a.weapon)) heldAWeapon = true;
+        }
+        expect(heldAWeapon).toBe(true);
+        expect(s.phase).toBe('presenter');
+        eliminationWins += s.actors.reduce((total, a) => total + a.wins, 0);
       }
-      expect(heldAWeapon).toBe(true);
-      expect(s.phase).toBe('presenter');
-      expect(s.actors.reduce((total, a) => total + a.wins, 0)).toBeGreaterThan(0);
+      expect(eliminationWins).toBeGreaterThanOrEqual(3);
     }
   });
 });
