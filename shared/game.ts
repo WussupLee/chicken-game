@@ -6,8 +6,8 @@ export const COLORS = [0xffdc59, 0xff8484, 0x85ddff, 0xb6f68e];
 export const WEAPONS = ['pistol', 'submachine', 'grenade'] as const;
 export type Weapon = typeof WEAPONS[number];
 export type Phase = 'lobby' | 'round' | 'presenter' | 'intermission' | 'winner';
-export interface Input { left: boolean; right: boolean; down: boolean; jump: boolean; fire: boolean; grab: boolean; ragdoll: boolean; strafe: boolean; cluck: boolean }
-export const NO_INPUT: Input = { left: false, right: false, down: false, jump: false, fire: false, grab: false, ragdoll: false, strafe: false, cluck: false };
+export interface Input { left: boolean; right: boolean; down: boolean; jump: boolean; fire: boolean; grab: boolean; ragdoll: boolean; cluck: boolean }
+export const NO_INPUT: Input = { left: false, right: false, down: false, jump: false, fire: false, grab: false, ragdoll: false, cluck: false };
 export interface Box { x: number; y: number; w: number; h: number }
 export interface Actor { id: string; name: string; bot: boolean; slot: number; hat: number; x: number; y: number; vx: number; vy: number; rotation: number; angularVelocity: number; facing: number; alive: boolean; ragdoll: boolean; grounded: boolean; crouch: boolean; sliding: boolean; flap: boolean; wall: number; jumpGrace: number; jumpBuffer: number; slideTicks: number; grenadeFuse: number; emptyTicks: number; weapon: Weapon | null; heldBody: string | null; ammo: number; wins: number; prev: Input; cooldown: number; cluck: boolean }
 export interface Item { id: number; type: Weapon; x: number; y: number; heldBy: string | null }
@@ -53,7 +53,7 @@ function move(a: Actor, input: Input, arena: Arena, cover: Cover[], effects: Eff
   if (input.down && a.grounded && Math.abs(a.vx) > 2 && !a.sliding) { a.slideTicks = 26; a.vx = a.facing * 8.8; }
   a.sliding = a.slideTicks > 0 && a.grounded && input.down;
   if (a.sliding) { a.slideTicks--; a.vx *= 0.975; if (axis && Math.sign(a.vx) !== axis) a.slideTicks = 0; }
-  else { a.slideTicks = 0; if (axis && !a.ragdoll) { a.vx += axis * (a.grounded ? 1.55 : 0.82); a.vx = Math.max(-6.8, Math.min(6.8, a.vx)); if (!input.strafe) a.facing = axis; } else a.vx *= a.grounded ? 0.52 : 0.91; }
+  else { a.slideTicks = 0; if (axis && !a.ragdoll) { a.vx += axis * (a.grounded ? 1.55 : 0.82); a.vx = Math.max(-6.8, Math.min(6.8, a.vx)); a.facing = axis; } else a.vx *= a.grounded ? 0.52 : 0.91; }
   a.crouch = input.down && a.grounded && !a.ragdoll;
   if (a.jumpBuffer && !a.ragdoll && !input.down && (a.jumpGrace || oldWall)) {
     if (oldWall && !a.grounded) { a.vx = -oldWall * 8; a.facing = -oldWall; a.vy = -15.5; }

@@ -7,7 +7,6 @@ type ViewState = GameState & { code: string; host: string };
 type Ack = { ok: boolean; code?: string; id?: string; token?: string; error?: string };
 const app = document.querySelector<HTMLDivElement>('#app')!;
 const socket = io({ autoConnect: true });
-const touchCapable = navigator.maxTouchPoints > 0 || matchMedia('(pointer: coarse)').matches;
 let state: ViewState | null = null;
 let myId = '';
 let code = '';
@@ -17,8 +16,9 @@ let game: Phaser.Game | null = null;
 let lastLobbyKey = '';
 let lastOverlayKey = '';
 const keys = new Set<string>();
-const defaultBindings: Record<keyof Input, string> = { left: 'KeyA', right: 'KeyD', down: 'KeyS', jump: 'Space', fire: 'KeyK', grab: 'KeyJ', ragdoll: 'KeyL', strafe: 'ShiftLeft', cluck: 'KeyE' };
-let bindings: Record<keyof Input, string> = { ...defaultBindings, ...JSON.parse(localStorage.getItem('chicken-bindings') || '{}') };
+const defaultBindings: Record<keyof Input, string> = { left: 'KeyA', right: 'KeyD', down: 'KeyS', jump: 'Space', fire: 'KeyK', grab: 'KeyJ', ragdoll: 'KeyL', cluck: 'KeyE' };
+const savedBindings = JSON.parse(localStorage.getItem('chicken-bindings') || '{}') as Partial<Record<keyof Input,string>>;
+let bindings: Record<keyof Input, string> = Object.fromEntries((Object.keys(defaultBindings) as (keyof Input)[]).map(k => [k, savedBindings[k] || defaultBindings[k]])) as Record<keyof Input,string>;
 let rebinding: keyof Input | null = null;
 let audio: AudioContext | null = null;
 let previousPhase = '';
@@ -26,6 +26,10 @@ let snapshotAt = performance.now();
 let priorPositions = new Map<string,{x:number;y:number}>();
 let lanAddresses: string[] = [];
 const touchPointers = new Map<number, keyof Input>();
+window.addEventListener('blur', () => {
+  touchPointers.clear();
+  document.querySelectorAll<HTMLButtonElement>('[data-touch]').forEach(button => button.classList.remove('pressed'));
+});
 void fetch('/api/network').then(r => r.json()).then((data: { addresses?: string[] }) => { lanAddresses = data.addresses || []; if (screen === 'lobby') render(); }).catch(() => {});
 document.addEventListener('pointerdown', () => { audio ??= new AudioContext(); void audio.resume(); });
 function sting(frequencies: number[]): void { if (!audio || audio.state !== 'running') return; frequencies.forEach((freq,i)=>{const o=audio!.createOscillator(),gain=audio!.createGain();o.type='square';o.frequency.value=freq;gain.gain.setValueAtTime(0.035,audio!.currentTime+i*0.11);gain.gain.exponentialRampToValueAtTime(0.001,audio!.currentTime+i*0.11+0.17);o.connect(gain).connect(audio!.destination);o.start(audio!.currentTime+i*0.11);o.stop(audio!.currentTime+i*0.11+0.18);}); }
@@ -56,7 +60,7 @@ function render(): void {
   if (screen === 'menu') { app.innerHTML = `<main class="shell">${title}<section class="panel menu"><h2>Enter the coop</h2><div class="stack"><input id="name" maxlength="18" placeholder="Your name" value="${esc(localStorage.getItem('chicken-name') || '')}"/>${button('practice','Practice vs. bots')}${button('create','Host a room','secondary')}${button('showjoin','Join a room','ghost')}${button('showcontrols','Controls','ghost')}<div class="error">${esc(error)}</div></div></section><footer class="footer">2–4 chickens. One winner. Infinite clucking.</footer></main>`;
     document.querySelector('#practice')!.addEventListener('click', () => create(true)); document.querySelector('#create')!.addEventListener('click', () => create()); document.querySelector('#showjoin')!.addEventListener('click', () => { screen='join'; render(); }); document.querySelector('#showcontrols')!.addEventListener('click', () => { screen='controls'; render(); }); return; }
   if (screen === 'join') { app.innerHTML = `<main class="shell">${title}<section class="panel menu"><h2>Join a room</h2><div class="stack"><input id="name" maxlength="18" placeholder="Your name" value="${esc(localStorage.getItem('chicken-name') || '')}"/><input id="room" maxlength="6" placeholder="6-letter room code" value="${esc(new URLSearchParams(location.search).get('room') || '')}"/>${button('join','Join room')}${button('back','Back','ghost')}<div class="error">${esc(error)}</div></div></section></main>`; document.querySelector('#join')!.addEventListener('click',()=>join(document.querySelector<HTMLInputElement>('#room')!.value)); document.querySelector('#back')!.addEventListener('click',()=>{screen='menu';render();}); return; }
-  if (screen === 'controls') { app.innerHTML = `<main class="shell">${title}<section class="panel menu"><h2>Controls</h2><p class="muted small">Click a key to change it. Gamepad: stick/D-pad, A jump, X fire, Y grab, B cluck, shoulder buttons strafe and ragdoll.</p><div class="control-grid">${(Object.keys(bindings) as (keyof Input)[]).map(k=>`<label>${k}<button class="ghost bind" data-action="${k}">${rebinding===k?'Press a key…':esc(bindings[k])}</button></label>`).join('')}</div>${button('back','Back','ghost')}</section></main>`; document.querySelectorAll<HTMLButtonElement>('.bind').forEach(b=>b.addEventListener('click',()=>{rebinding=b.dataset.action as keyof Input;render();})); document.querySelector('#back')!.addEventListener('click',()=>{screen='menu';render();}); return; }
+  if (screen === 'controls') { app.innerHTML = `<main class="shell">${title}<section class="panel menu"><h2>Controls</h2><p class="muted small">Click a key to change it. Gamepad: stick/D-pad, A jump, X fire, Y grab, B cluck, shoulder button ragdoll. On screen, slide a finger between buttons without lifting.</p><div class="control-grid">${(Object.keys(bindings) as (keyof Input)[]).map(k=>`<label>${k}<button class="ghost bind" data-action="${k}">${rebinding===k?'Press a key…':esc(bindings[k])}</button></label>`).join('')}</div>${button('back','Back','ghost')}</section></main>`; document.querySelectorAll<HTMLButtonElement>('.bind').forEach(b=>b.addEventListener('click',()=>{rebinding=b.dataset.action as keyof Input;render();})); document.querySelector('#back')!.addEventListener('click',()=>{screen='menu';render();}); return; }
   if (!state) return;
   if (screen === 'lobby' && state.phase === 'lobby') { const me = state.actors.find(a=>a.id===myId); const host = state.host===myId;
     const link=inviteUrl();
@@ -67,7 +71,7 @@ function render(): void {
   const phase = state.phase;
   const overlay = phase==='round'?'':`<div class="overlay"><div class="overlay-card"><h2>${phase==='intermission'?'THE SCOREBOARD':phase==='winner'?'THE CHAMPION':'COOP NEWS'}</h2><p>${esc(state.message)}</p>${phase==='intermission'?state.actors.map(a=>`<div>${esc(a.name)} — ${a.wins} wins</div>`).join(''):''}${phase==='winner'&&state.host===myId?button('again','Play again'):''}</div></div>`;
   const hadCanvas = !!document.querySelector('#game canvas');
-  if (!hadCanvas) { app.innerHTML=`<main class="shell">${title}<div class="game-wrap"><div id="game"></div><div class="hud" id="hud"></div><div id="phase-overlay"></div>${touchCapable?`<div class="touch-controls" aria-label="Touch game controls"><div class="touch-move"><button data-touch="left" aria-label="Move left">◀</button><button data-touch="right" aria-label="Move right">▶</button><button data-touch="down" aria-label="Crouch or slide">▼</button></div><div class="touch-actions"><button data-touch="grab" aria-label="Grab or throw">GRAB</button><button data-touch="fire" aria-label="Fire weapon">FIRE</button><button data-touch="jump" aria-label="Jump or flap">JUMP</button><button data-touch="strafe" aria-label="Strafe">STRAFE</button><button data-touch="ragdoll" aria-label="Ragdoll">FLOP</button><button data-touch="cluck" aria-label="Cluck">CLUCK</button></div></div>`:''}</div><div class="footer">A/D move · Space jump/flap · S slide · J grab/throw · K fire · L ragdoll · E cluck</div></main>`; initGame(); bindTouchControls(); }
+  if (!hadCanvas) { app.innerHTML=`<main class="shell handheld-page">${title}<div class="handheld"><div class="handheld-top"><span class="power-led"></span><span>CHICKEN COLOR · LINK ARENA</span><span class="battery-label">POWER</span></div><div class="game-wrap"><div id="game"></div><div class="hud" id="hud"></div><div id="phase-overlay"></div></div><div class="handheld-wordmark">CHICKEN <em>GAME</em><span>✦ 4 PLAYER LINK ✦</span></div><div class="touch-controls" aria-label="Handheld game controls"><div class="touch-move" aria-label="Directional pad"><button class="dpad-up" data-touch="jump" aria-label="Jump or flap">▲</button><button class="dpad-left" data-touch="left" aria-label="Move left">◀</button><div class="dpad-center" aria-hidden="true"></div><button class="dpad-right" data-touch="right" aria-label="Move right">▶</button><button class="dpad-down" data-touch="down" aria-label="Crouch or slide">▼</button></div><div class="touch-actions" aria-label="Action buttons"><button class="action-b" data-touch="jump" aria-label="Jump or flap"><strong>B</strong><small>JUMP</small></button><button class="action-a" data-touch="fire" aria-label="Fire or grenade pin"><strong>A</strong><small>FIRE</small></button><button class="action-small" data-touch="grab" aria-label="Grab or throw">GRAB</button><button class="action-small" data-touch="ragdoll" aria-label="Ragdoll">FLOP</button><button class="action-small" data-touch="cluck" aria-label="Cluck">CLUCK</button></div></div><div class="handheld-bottom"><span>SELECT</span><i></i><i></i><span>START</span><div class="speaker" aria-hidden="true">▰ ▰ ▰ ▰ ▰</div></div></div><div class="footer">A/D move · Space jump/flap · S slide · J grab/throw · K fire · L ragdoll · E cluck</div></main>`; initGame(); bindTouchControls(); }
   const mine=state.actors.find(a=>a.id===myId); const ammo=mine?.weapon?`${mine.weapon.toUpperCase()} ${mine.ammo}${mine.grenadeFuse?' · PIN OUT':''}`:'UNARMED';
   document.querySelector('#hud')!.innerHTML=`<div>${scores}<span class="score">${ammo}</span></div><div class="score">ROUND ${state.round} · ${Math.max(0,Math.ceil(state.timer))}s</div>`;
   if (overlay!==lastOverlayKey) {document.querySelector('#phase-overlay')!.innerHTML=overlay;lastOverlayKey=overlay;document.querySelector('#again')?.addEventListener('click',()=>socket.emit('start'));}
@@ -102,8 +106,24 @@ class ArenaScene extends Phaser.Scene {
   placeWeapon(id:string,key:string,x:number,y:number,facing:number,scale:number):void{let image=this.weaponSprites.get(id);if(!image){image=this.add.image(x,y,key).setDepth(1);this.weaponSprites.set(id,image);}image.setTexture(key).setPosition(x,y).setFlipX(facing<0).setScale(scale).setVisible(true);}
 }
 function initGame(){ game?.destroy(true); game=new Phaser.Game({type:Phaser.AUTO,width:WIDTH,height:HEIGHT,parent:'game',pixelArt:true,transparent:false,scene:[ArenaScene],scale:{mode:Phaser.Scale.FIT,autoCenter:Phaser.Scale.CENTER_BOTH}}); }
-function bindTouchControls():void { document.querySelectorAll<HTMLButtonElement>('[data-touch]').forEach(button=>{const action=button.dataset.touch as keyof Input;button.addEventListener('pointerdown',event=>{event.preventDefault();button.setPointerCapture(event.pointerId);touchPointers.set(event.pointerId,action);button.classList.add('pressed');});const release=(event:PointerEvent)=>{touchPointers.delete(event.pointerId);button.classList.toggle('pressed',[...touchPointers.values()].includes(action));};button.addEventListener('pointerup',release);button.addEventListener('pointercancel',release);button.addEventListener('lostpointercapture',release);}); }
-function collectInput():Input { const out={...NO_INPUT}; for(const k of Object.keys(bindings) as (keyof Input)[]) out[k]=keys.has(bindings[k])||[...touchPointers.values()].includes(k); const gp=navigator.getGamepads?.()[0]; if(gp){const b=(n:number)=>!!gp.buttons[n]?.pressed;out.left ||= gp.axes[0]<-.3||b(14);out.right ||= gp.axes[0]>.3||b(15);out.down ||= gp.axes[1]>.5||b(13);out.jump ||= b(0);out.fire ||= b(2);out.grab ||= b(3);out.cluck ||= b(1);out.strafe ||= b(4);out.ragdoll ||= b(5);} return out; }
+function bindTouchControls():void {
+  touchPointers.clear();
+  const refresh = () => document.querySelectorAll<HTMLButtonElement>('[data-touch]').forEach(button => button.classList.toggle('pressed',[...touchPointers.values()].includes(button.dataset.touch as keyof Input)));
+  document.querySelectorAll<HTMLElement>('.touch-move,.touch-actions').forEach(region => {
+    const move = (event:PointerEvent) => {
+      event.preventDefault();
+      const hit = document.elementFromPoint(event.clientX,event.clientY)?.closest<HTMLElement>('[data-touch]');
+      if (hit && region.contains(hit)) touchPointers.set(event.pointerId,hit.dataset.touch as keyof Input);
+      else touchPointers.delete(event.pointerId);
+      refresh();
+    };
+    region.addEventListener('pointerdown',event => { region.setPointerCapture(event.pointerId); move(event); });
+    region.addEventListener('pointermove',event => { if(region.hasPointerCapture(event.pointerId)) move(event); });
+    const release = (event:PointerEvent) => { touchPointers.delete(event.pointerId); refresh(); };
+    region.addEventListener('pointerup',release); region.addEventListener('pointercancel',release); region.addEventListener('lostpointercapture',release);
+  });
+}
+function collectInput():Input { const out={...NO_INPUT}; for(const k of Object.keys(bindings) as (keyof Input)[]) out[k]=keys.has(bindings[k])||[...touchPointers.values()].includes(k); const gp=navigator.getGamepads?.()[0]; if(gp){const b=(n:number)=>!!gp.buttons[n]?.pressed;out.left ||= gp.axes[0]<-.3||b(14);out.right ||= gp.axes[0]>.3||b(15);out.down ||= gp.axes[1]>.5||b(13);out.jump ||= b(0);out.fire ||= b(2);out.grab ||= b(3);out.cluck ||= b(1);out.ragdoll ||= b(4)||b(5);} return out; }
 setInterval(()=>{if(myId&&state?.phase==='round')socket.emit('input',collectInput());},1000/60);
 socket.on('state',(s:ViewState)=>{if(code&&s.code!==code)return;priorPositions=new Map(state?.actors.map(a=>[a.id,{x:a.x,y:a.y}])||[]);snapshotAt=performance.now();if(previousPhase!==s.phase){if(s.phase==='round')sting([330,440,660]);else if(s.phase==='winner')sting([523,659,784,1047]);else if(s.phase==='intermission')sting([392,330,392]);else if(s.phase==='presenter')sting([440,330]);previousPhase=s.phase;}state=s;if(s.phase==='lobby'&&screen==='game'){screen='lobby';game?.destroy(true);game=null;lastLobbyKey='';lastOverlayKey='';} if(screen==='lobby'&&s.phase!=='lobby'){screen='game';lastOverlayKey='';} if(screen==='lobby'&&s.phase==='lobby'){const key=JSON.stringify([s.host,s.actors.map(a=>[a.id,a.name,a.slot,a.bot,a.hat])]);if(key===lastLobbyKey)return;lastLobbyKey=key;} render();});
 socket.on('connect',()=>{if(error==='Connection lost. Reconnecting…'){error='';if(screen!=='game')render();}const c=new URLSearchParams(location.search).get('room');if(c)join(c);});

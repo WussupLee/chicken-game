@@ -27,7 +27,7 @@ For live client editing, run `npm run server` and `npm run dev` in separate term
 - **Practice vs. bots** creates a private room with three computer opponents. The host can remove bots in the ready room.
 - **Host a room** creates a private room. Share the link or code; add bots to any open slots.
 - **Join a room** accepts a six-character code. The room host starts the match when at least two participants are present.
-- **Controls:** A/D move, S crouch or slide, Space jump and press again to flap, J grab or throw, K fire, L ragdoll, Shift strafe, E cluck. Tap Fire once to pull a grenade pin and again to throw it before the fuse expires. Rebind keyboard keys from Controls. Gamepad uses the stick or D-pad, A jump, X fire, Y grab, B cluck, and shoulder buttons for strafe and ragdoll. Touch devices show an on-screen movement pad and action buttons during matches.
+- **Controls:** A/D move, S crouch or slide, Space jump and press again to flap, J grab or throw, K fire, L ragdoll, E cluck. Tap Fire once to pull a grenade pin and again to throw it before the fuse expires. Rebind keyboard keys from Controls. Gamepad uses the stick or D-pad, A jump, X fire, Y grab, B cluck, and either shoulder button for ragdoll. The handheld interface has a D-pad and action buttons below the screen; slide a finger between buttons without lifting to change inputs.
 - The score is shown every ten rounds. The first player or bot with ten wins and an outright lead takes the match at an intermission.
 
 ## Play together on a local network
