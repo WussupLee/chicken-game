@@ -61,15 +61,15 @@ describe('match simulation', () => {
     expect(b.vx).toBeGreaterThan(5);
   });
 
-  it('starts every round unarmed and rolls each of three pickup pads independently', () => {
+  it('starts every round unarmed and rolls six pickup pads independently', () => {
     for (let seed = 1; seed <= 80; seed++) {
       const s = newGame(seed);
       s.actors = [makeActor('a', 'A', false, 0), makeActor('b', 'B', false, 1)];
       startRound(s);
       expect(s.actors.every(a => a.weapon === null && a.ammo === 0)).toBe(true);
-      expect(s.items).toHaveLength(3);
+      expect(s.items).toHaveLength(6);
       expect(s.items.every(item => WEAPONS.includes(item.type))).toBe(true);
-      expect(new Set(s.items.map(item => item.x)).size).toBe(3);
+      expect(new Set(s.items.map(item => item.x)).size).toBe(6);
     }
   });
 
@@ -93,6 +93,34 @@ describe('match simulation', () => {
     for (let i = 0; i < 8; i++) tick(s, { a: { ...NO_INPUT, fire: true } });
     expect(a.ammo).toBe(22);
     expect(s.shots.length).toBeGreaterThan(1);
+  });
+
+  it('pins a grenade on the first tap and throws it on the second', () => {
+    const s = newGame(14); s.actors = [makeActor('a','A',false,0),makeActor('b','B',false,1)]; startRound(s);
+    const a=s.actors[0]; a.weapon='grenade';a.ammo=3;
+    tick(s,{a:{...NO_INPUT,fire:true}});
+    expect(a.grenadeFuse).toBe(150);expect(s.shots).toHaveLength(0);
+    tick(s,{a:NO_INPUT});tick(s,{a:{...NO_INPUT,fire:true}});
+    expect(a.grenadeFuse).toBe(0);expect(a.ammo).toBe(2);
+    expect(s.shots.some(p=>p.kind==='grenade'&&p.ttl>0)).toBe(true);
+  });
+
+  it('lets bullets pass through an active slide and hit when it ends', () => {
+    const s=newGame(15);s.actors=[makeActor('a','A',false,0),makeActor('b','B',false,1)];startRound(s);
+    const b=s.actors[1];b.x=300;b.y=504;b.vx=3;b.grounded=true;
+    s.shots=[{id:900,kind:'pistol',owner:'a',x:296,y:490,vx:14,vy:0,ttl:20,radius:3}];
+    tick(s,{b:{...NO_INPUT,right:true,down:true}});expect(b.alive).toBe(true);expect(b.sliding).toBe(true);
+    s.shots=[{id:901,kind:'pistol',owner:'a',x:b.x-10,y:490,vx:14,vy:0,ttl:20,radius:3}];
+    tick(s,{b:NO_INPUT});expect(b.sliding).toBe(false);expect(b.alive).toBe(false);
+  });
+
+  it('chips cover and allows a wall jump', () => {
+    const s=newGame(16);s.actors=[makeActor('a','A',false,0),makeActor('b','B',false,1)];startRound(s);
+    const c=s.cover[0];s.shots=[{id:902,kind:'pistol',owner:'a',x:c.x-7,y:c.y+10,vx:14,vy:0,ttl:20,radius:3}];
+    tick(s,{});expect(c.hp).toBe(2);
+    const a=s.actors[0];a.x=35;a.y=350;a.vx=-4;a.vy=1;a.grounded=false;
+    tick(s,{a:{...NO_INPUT,left:true}});expect(a.wall).toBe(-1);
+    tick(s,{a:{...NO_INPUT,jump:true,right:true}});expect(a.vy).toBeLessThan(-10);expect(a.vx).toBeGreaterThan(0);
   });
 
   it('moves bots toward a pickup and jumps or flaps toward a higher goal', () => {
@@ -143,18 +171,20 @@ describe('match simulation', () => {
     expect(body.angularVelocity).toBeLessThan(0.2);
   });
 
-  it('has bots participate in a complete round', () => {
-    const s = newGame(1);
-    s.actors = [0,1,2,3].map(i => makeActor(`bot${i}`, `Bot ${i}`, true, i));
-    startRound(s);
-    let heldAWeapon = false;
-    for (let i = 0; i < 60 * 47 && s.phase === 'round'; i++) {
-      const inputs = Object.fromEntries(s.actors.map(a => [a.id, botInput(s, a)]));
-      tick(s, inputs);
-      if (s.actors.some(a => a.weapon)) heldAWeapon = true;
+  it('has bots finish rounds by elimination on each arena', () => {
+    for (const arenaIndex of [0,1,2]) {
+      const s = newGame(arenaIndex === 1 ? 2 : 1); s.round = arenaIndex;
+      s.actors = [0,1,2,3].map(i => makeActor(`map${arenaIndex}bot${i}`, `Bot ${i}`, true, i));
+      startRound(s);
+      let heldAWeapon = false;
+      for (let i = 0; i < 60 * 47 && s.phase === 'round'; i++) {
+        const inputs = Object.fromEntries(s.actors.map(a => [a.id, botInput(s, a)]));
+        tick(s, inputs);
+        if (s.actors.some(a => a.weapon)) heldAWeapon = true;
+      }
+      expect(heldAWeapon).toBe(true);
+      expect(s.phase).toBe('presenter');
+      expect(s.actors.reduce((total, a) => total + a.wins, 0)).toBeGreaterThan(0);
     }
-    expect(heldAWeapon).toBe(true);
-    expect(s.phase).toBe('presenter');
-    expect(s.actors.reduce((total, a) => total + a.wins, 0)).toBeGreaterThan(0);
   });
 });

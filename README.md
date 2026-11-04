@@ -27,7 +27,7 @@ For live client editing, run `npm run server` and `npm run dev` in separate term
 - **Practice vs. bots** creates a private room with three computer opponents. The host can remove bots in the ready room.
 - **Host a room** creates a private room. Share the link or code; add bots to any open slots.
 - **Join a room** accepts a six-character code. The room host starts the match when at least two participants are present.
-- **Controls:** A/D move, S crouch or slide, Space jump and press again to flap, J grab or throw, K fire, L ragdoll, Shift strafe, E cluck. Rebind keyboard keys from Controls. Gamepad uses the stick or D-pad, A jump, X fire, Y grab, B cluck, and shoulder buttons for strafe and ragdoll. Touch devices show an on-screen movement pad and action buttons during matches.
+- **Controls:** A/D move, S crouch or slide, Space jump and press again to flap, J grab or throw, K fire, L ragdoll, Shift strafe, E cluck. Tap Fire once to pull a grenade pin and again to throw it before the fuse expires. Rebind keyboard keys from Controls. Gamepad uses the stick or D-pad, A jump, X fire, Y grab, B cluck, and shoulder buttons for strafe and ragdoll. Touch devices show an on-screen movement pad and action buttons during matches.
 - The score is shown every ten rounds. The first player or bot with ten wins and an outright lead takes the match at an intermission.
 
 ## Play together on a local network
@@ -52,4 +52,4 @@ Pistol and submachine gun sprites are from [Arcade Island's GUNS Asset Pack V1](
 
 ## Current limits
 
-The game has ten arenas, three weapons (pistol, submachine gun, grenade), eight hats, private four-participant rooms, and one bot skill level. It is a playable first release, not a frame-perfect reproduction of Duck Game. It does not include public matchmaking, persistence, live spectator slots, a level editor, or the complete Duck Game content catalog.
+The active rotation has three arenas with six weapon pads each, three weapons (pistol, submachine gun, grenade), eight hats, private four-participant rooms, and one bot skill level. It is a playable first release, not a frame-perfect reproduction of Duck Game. It does not include public matchmaking, persistence, live spectator slots, a level editor, or the complete Duck Game content catalog.
