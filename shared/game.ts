@@ -5,9 +5,9 @@ export const HATS = ['Bare', 'Top Hat', 'Cowboy', 'Crown', 'Chef', 'Propeller', 
 export const COLORS = [0xffdc59, 0xff8484, 0x85ddff, 0xb6f68e];
 export const WEAPONS = ['pistol', 'submachine', 'grenade', 'sword'] as const;
 export const SWORD_COMBO = {
-  1: { ticks: 28, hitAt: 22 },
-  2: { ticks: 32, hitAt: 19 },
-  3: { ticks: 42, hitAt: 23 }
+  1: { ticks: 28, hitAt: 22, endTicks: 15 },
+  2: { ticks: 32, hitAt: 19, endTicks: 13 },
+  3: { ticks: 42, hitAt: 23, endTicks: 14 }
 } as const;
 export type Weapon = typeof WEAPONS[number];
 export type Phase = 'lobby' | 'round' | 'presenter' | 'intermission' | 'winner';

@@ -920,7 +920,7 @@
     "frameWidth": 128,
     "frameHeight": 128,
     "frames": 4,
-    "fps": 14,
+    "fps": 16,
     "runtime": true
   },
   {
@@ -931,7 +931,7 @@
     "frameWidth": 128,
     "frameHeight": 128,
     "frames": 4,
-    "fps": 14,
+    "fps": 16,
     "runtime": true
   },
   {
@@ -942,7 +942,7 @@
     "frameWidth": 128,
     "frameHeight": 128,
     "frames": 4,
-    "fps": 14,
+    "fps": 16,
     "runtime": true
   },
   {
@@ -953,7 +953,7 @@
     "frameWidth": 128,
     "frameHeight": 128,
     "frames": 6,
-    "fps": 16,
+    "fps": 19,
     "runtime": true
   },
   {
@@ -964,7 +964,7 @@
     "frameWidth": 128,
     "frameHeight": 128,
     "frames": 6,
-    "fps": 16,
+    "fps": 19,
     "runtime": true
   },
   {
@@ -975,7 +975,7 @@
     "frameWidth": 128,
     "frameHeight": 128,
     "frames": 6,
-    "fps": 16,
+    "fps": 19,
     "runtime": true
   },
   {
@@ -986,7 +986,7 @@
     "frameWidth": 128,
     "frameHeight": 128,
     "frames": 4,
-    "fps": 16,
+    "fps": 18,
     "runtime": true
   },
   {
@@ -997,7 +997,7 @@
     "frameWidth": 128,
     "frameHeight": 128,
     "frames": 4,
-    "fps": 16,
+    "fps": 18,
     "runtime": true
   },
   {
@@ -1008,7 +1008,7 @@
     "frameWidth": 128,
     "frameHeight": 128,
     "frames": 4,
-    "fps": 16,
+    "fps": 18,
     "runtime": true
   },
   {
@@ -1019,7 +1019,7 @@
     "frameWidth": 128,
     "frameHeight": 128,
     "frames": 12,
-    "fps": 20,
+    "fps": 26,
     "runtime": true
   },
   {
@@ -1030,7 +1030,7 @@
     "frameWidth": 128,
     "frameHeight": 128,
     "frames": 12,
-    "fps": 20,
+    "fps": 26,
     "runtime": true
   },
   {
@@ -1041,7 +1041,7 @@
     "frameWidth": 128,
     "frameHeight": 128,
     "frames": 12,
-    "fps": 20,
+    "fps": 26,
     "runtime": true
   },
   {
@@ -1052,7 +1052,7 @@
     "frameWidth": 128,
     "frameHeight": 128,
     "frames": 6,
-    "fps": 20,
+    "fps": 26,
     "runtime": true
   },
   {
@@ -1063,7 +1063,7 @@
     "frameWidth": 128,
     "frameHeight": 128,
     "frames": 6,
-    "fps": 20,
+    "fps": 26,
     "runtime": true
   },
   {
@@ -1074,7 +1074,7 @@
     "frameWidth": 128,
     "frameHeight": 128,
     "frames": 6,
-    "fps": 20,
+    "fps": 26,
     "runtime": true
   },
   {

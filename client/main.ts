@@ -148,7 +148,7 @@ type HeroAnchor = { gun:[number,number]; up:[number,number]; diag:[number,number
 type HeroAnchors = Record<string, HeroAnchor[]>;
 function heroPose(a: Actor): HeroPose {
   if (!a.alive || a.ragdoll) return 'ragdoll';
-  if (a.swingTicks && a.comboStage) return (`combo_${a.comboStage}${a.swingTicks <= (a.comboStage === 1 ? 15 : a.comboStage === 2 ? 13 : 14) ? '_end' : ''}`) as HeroPose;
+  if (a.swingTicks && a.comboStage) return (`combo_${a.comboStage}${a.swingTicks <= SWORD_COMBO[a.comboStage].endTicks ? '_end' : ''}`) as HeroPose;
   if (a.throwTicks) return 'throw';
   if (a.ledgeSide) return 'ledge_hang';
   if (a.climbTicks) return 'ledge_climb';
@@ -165,15 +165,6 @@ function heroFrame(a: Actor, pose: HeroPose, elapsedMs: number): number {
   if (pose === 'ragdoll') return a.alive ? 0 : 1;
   if (pose === 'jump') return Math.max(0, Math.min(5, Math.floor((15.5 + a.vy) / 3.1)));
   if (pose === 'fall') return Math.max(0, Math.min(3, Math.floor(a.vy / 2)));
-  if (pose.startsWith('combo_') && a.comboStage) {
-    const duration=SWORD_COMBO[a.comboStage].ticks;
-    const endTicks=a.comboStage===1?15:a.comboStage===2?13:14;
-    const activeTicks=duration-endTicks;
-    const progress=duration-a.swingTicks;
-    return pose.endsWith('_end')
-      ? Math.min(config.frames-1,Math.floor((progress-activeTicks)*config.frames/endTicks))
-      : Math.min(config.frames-1,Math.floor(progress*config.frames/activeTicks));
-  }
   if (pose === 'ledge_climb') return Math.min(config.frames-1, Math.floor((10-a.climbTicks)*config.frames/10));
   if (pose === 'throw') return Math.min(3, Math.floor((8 - a.throwTicks) / 2));
   const index=Math.floor(elapsedMs*(heroTiming[pose]||config.fps)/1000);

@@ -259,7 +259,7 @@
     },
     "combo_1_end": {
       "frames": 4,
-      "fps": 14,
+      "fps": 16,
       "loop": false,
       "runtime": true,
       "variants": [
@@ -270,7 +270,7 @@
     },
     "combo_2": {
       "frames": 6,
-      "fps": 16,
+      "fps": 19,
       "loop": false,
       "runtime": true,
       "variants": [
@@ -281,7 +281,7 @@
     },
     "combo_2_end": {
       "frames": 4,
-      "fps": 16,
+      "fps": 18,
       "loop": false,
       "runtime": true,
       "variants": [
@@ -292,7 +292,7 @@
     },
     "combo_3": {
       "frames": 12,
-      "fps": 20,
+      "fps": 26,
       "loop": false,
       "runtime": true,
       "variants": [
@@ -303,7 +303,7 @@
     },
     "combo_3_end": {
       "frames": 6,
-      "fps": 20,
+      "fps": 26,
       "loop": false,
       "runtime": true,
       "variants": [
