@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ARENAS, makeActor, newGame, predictActorMovement, startRound, tick, NO_INPUT, WEAPONS } from './game';
+import { ARENAS, makeActor, newGame, predictActorMovement, startRound, tick, NO_INPUT, WEAPONS, WEAPON_STATS } from './game';
 import { botInput } from '../server/bot';
 
 describe('match simulation', () => {
@@ -309,6 +309,30 @@ describe('match simulation', () => {
     tick(s,{b:{...NO_INPUT,right:true,down:true}});expect(b.alive).toBe(true);expect(b.sliding).toBe(true);
     s.shots=[{id:901,kind:'pistol',owner:'a',x:b.x-10,y:497,vx:14,vy:0,ttl:20,radius:3}];
     tick(s,{b:NO_INPUT});expect(b.sliding).toBe(true);expect(b.alive).toBe(false);
+  });
+
+  it('moves bullets slightly faster and detects chickens and thin cover between ticks', () => {
+    expect(WEAPON_STATS.pistol.projectileSpeed).toBe(16);
+    expect(WEAPON_STATS.submachine.projectileSpeed).toBe(16);
+    const s=newGame(52);s.actors=[makeActor('a','A',false,0),makeActor('b','B',false,1)];startRound(s);
+    const [a,b]=s.actors;a.x=80;a.y=150;b.x=400;b.y=160;s.cover=[];
+    s.shots=[{id:3001,kind:'pistol',owner:'a',x:380,y:145,vx:16,vy:0,ttl:30,radius:3}];
+    tick(s,{});expect(b.alive).toBe(false);expect(s.shots).toHaveLength(0);
+    startRound(s);s.cover=[{x:400,y:130,w:2,h:30,kind:'wall',hp:1,maxHp:1}];
+    s.shots=[{id:3002,kind:'pistol',owner:'a',x:389,y:145,vx:16,vy:0,ttl:30,radius:3}];
+    tick(s,{});expect(s.cover).toHaveLength(0);expect(s.shots).toHaveLength(0);
+  });
+
+  it('bounces grenades from floors and walls and settles a nearly stopped grenade', () => {
+    const s=newGame(53);s.actors=[makeActor('a','A',false,0),makeActor('b','B',false,1)];startRound(s);
+    s.actors[0].x=80;s.actors[1].x=900;s.cover=[];
+    s.shots=[{id:3010,kind:'grenade',owner:'a',x:200,y:490,vx:0,vy:6,ttl:100,radius:5,rotation:0,angularVelocity:0.1}];
+    tick(s,{});expect(s.shots[0].y).toBe(495);expect(s.shots[0].vy).toBeLessThan(0);expect(s.shots[0].rotation).not.toBe(0);
+    s.shots=[{id:3011,kind:'grenade',owner:'a',x:700,y:400,vx:8,vy:0,ttl:100,radius:5}];
+    tick(s,{});expect(s.shots[0].x).toBeLessThanOrEqual(705);expect(s.shots[0].vx).toBeLessThan(0);
+    s.shots=[{id:3012,kind:'grenade',owner:'a',x:200,y:495,vx:0.08,vy:0,ttl:100,radius:5}];
+    for(let i=0;i<12;i++)tick(s,{});
+    expect(s.shots[0].vx).toBe(0);expect(s.shots[0].vy).toBe(0);expect(s.shots[0].x).toBeLessThan(205);
   });
 
   it('chips cover and allows a wall jump', () => {

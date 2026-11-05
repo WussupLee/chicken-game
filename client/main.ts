@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { io } from 'socket.io-client';
 import { ARENAS, COLORS, HEIGHT, NO_INPUT, predictActorMovement, SWORD_COMBO, WIDTH, type Actor, type GameState, type Input, type Weapon } from '../shared/game';
+import { containCombatants, frameCombatants, type CameraFrame } from '../shared/camera';
 import HERO_MANIFEST from './public/assets/hero/manifest.json';
 import './style.css';
 
@@ -183,6 +184,8 @@ class ArenaScene extends Phaser.Scene {
   tiles = new Map<string, Phaser.GameObjects.TileSprite>();
   tileTextures = new Map<string, string>();
   seenEffects = new Set<number>();
+  cameraFrame:CameraFrame|null=null;
+  cameraRound=0;
   constructor(){super('arena');}
   visualPose(a:Actor,time:number):HeroPose {
     let base=heroPose(a);const before=this.motion.get(a.id);
@@ -221,8 +224,19 @@ class ArenaScene extends Phaser.Scene {
   update(time:number,delta:number){ if(!state) return; const s=state; const ar=ARENAS[s.arenaIndex]; const g=this.graphics; const f=this.foreground; g.clear(); f.clear();
     const camera=this.cameras.main, viewWidth=camera.width;
     const mine=s.actors.find(a=>a.id===myId);
-    if(mine&&!mine.alive&&spectateTarget==='wide'){camera.setZoom(viewWidth/WIDTH);camera.centerOn(WIDTH/2,HEIGHT/2);}
-    else {camera.setZoom(1);const watched=mine&&!mine.alive?s.actors.find(a=>a.id===spectateTarget):mine;if(watched&&viewWidth<WIDTH){const projected=watched.id===myId&&predictedActor?predictedActor.x+correctionX:watched.x;const target=Math.max(0,Math.min(WIDTH-viewWidth,projected-viewWidth/2));const current=camera.scrollX;camera.scrollX=Math.abs(target-current)>220?target:current+(target-current)*0.22;}camera.scrollY=0;}
+    const alive=s.actors.filter(a=>a.alive).map(a=>a.id===myId&&predictedActor?{x:predictedActor.x+correctionX,y:predictedActor.y+correctionY}:{x:a.x,y:a.y});
+    const spectating=!!mine&&!mine.alive;
+    const watched=spectating&&spectateTarget!=='wide'?s.actors.find(a=>a.id===spectateTarget&&a.alive):null;
+    const target=s.phase!=='round'||spectating&&spectateTarget==='wide'?frameCombatants([{x:0,y:0},{x:WIDTH,y:HEIGHT}],viewWidth,camera.height,1):watched?frameCombatants([watched],viewWidth,camera.height,1.35):frameCombatants(alive,viewWidth,camera.height);
+    if(this.cameraRound!==s.round||!this.cameraFrame){this.cameraFrame=target;this.cameraRound=s.round;}
+    else {
+      const pan=1-Math.exp(-Math.min(delta,50)/120),zoom=1-Math.exp(-Math.min(delta,50)/220);
+      const previous=this.cameraFrame;
+      let next:CameraFrame={x:previous.x+(target.x-previous.x)*pan,y:previous.y+(target.y-previous.y)*pan,zoom:Math.min(target.zoom,previous.zoom+(target.zoom-previous.zoom)*zoom)};
+      if(!spectating&&s.phase==='round'&&alive.length)next=containCombatants(next,alive,viewWidth,camera.height);
+      this.cameraFrame=next;
+    }
+    camera.setZoom(this.cameraFrame.zoom);camera.centerOn(this.cameraFrame.x,this.cameraFrame.y);
     if(this.renderedArena!==s.arenaIndex){this.renderedArena=s.arenaIndex;const g=this.background;g.clear();
     if(ar.theme==='forest'){
       g.fillGradientStyle(0x8bc9df,0x8bc9df,0x467f9c,0x467f9c);g.fillRect(0,0,WIDTH,HEIGHT);
@@ -284,8 +298,26 @@ class ArenaScene extends Phaser.Scene {
     for(const pad of s.pads||[]){const active=pad.itemId!==null;const glow=active?Math.min(1,1-pad.appearing/30):0.12;g.fillStyle(0xbce9ff,0.06+glow*0.14);g.fillTriangle(pad.x-23,pad.y+15,pad.x+23,pad.y+15,pad.x,pad.y-32);g.fillStyle(0xffffff,0.04+glow*0.16);g.fillTriangle(pad.x-14,pad.y+13,pad.x+14,pad.y+13,pad.x,pad.y-24);g.fillStyle(0x4b6579);g.fillRoundedRect(pad.x-23,pad.y+12,46,7,3);g.fillStyle(0xd9f7ff,0.2+glow*0.8);g.fillRoundedRect(pad.x-19,pad.y+12,38,3,2);}
     for(const item of s.items){const pad=item.padIndex===undefined?null:s.pads?.[item.padIndex];const lift=pad?8+Math.sin(time/190+item.id)*3-pad.appearing/30*18:0;const visualY=item.y-lift;g.fillStyle(0x0c1723,0.35);g.fillEllipse(item.x,item.y+8,36,7);if(pad){g.fillStyle(0xffffff,Math.max(0.15,0.38-pad.appearing/90));g.fillCircle(item.x,visualY,16);}const id=`item-${item.id}`;activeWeaponSprites.add(id);this.placeWeapon(id,`weapon-${item.type}`,item.x,visualY,1,item.type==='pistol'?0.8:item.type==='grenade'?1.15:0.62);}
     for(const gun of s.thrownGuns){const id=`thrown-${gun.id}`;activeWeaponSprites.add(id);this.placeWeapon(id,`weapon-${gun.type}`,gun.x,gun.y,1,gun.type==='pistol'?0.72:0.58,gun.rotation,0xaeb8c1);}
-    for(const p of s.shots){if(p.kind==='grenade'){const id=`grenade-${p.id}`;activeWeaponSprites.add(id);this.placeWeapon(id,'weapon-grenade',p.x,p.y,1,0.7);}else{g.fillStyle(0xff8d50,0.28);g.fillCircle(p.x,p.y,8);g.fillStyle(0xffeab1);g.fillCircle(p.x,p.y,3);}}
-    for(const e of s.effects){if(!this.seenEffects.has(e.id)){this.seenEffects.add(e.id);if(this.seenEffects.size>2000)this.seenEffects.clear();if(e.type==='blast')this.cameras.main.shake(170,0.008);else if(e.type==='shot'||e.type==='hit')this.cameras.main.shake(45,0.001);if(e.type==='empty')sting([160]);else if(e.type==='blast')sting([90,65]);else if(e.type==='shot')sting([260]);else if(e.type==='pin')pinSound();}if(e.type==='pin'){const travel=20-e.ttl;g.lineStyle(2,0xe8e5d4,Math.min(1,e.ttl/8));g.strokeCircle(e.x+travel*1.4,e.y-travel*0.7,4);g.lineBetween(e.x+travel*1.4+4,e.y-travel*0.7,e.x+travel*1.4+7,e.y-travel*0.7+2);continue;}g.fillStyle(e.type==='blast'?0xffba53:e.type==='shot'?0xffe7a3:0xd6bd91,Math.min(0.7,e.ttl/20));const r=e.type==='blast'?(24-e.ttl)*3:e.type==='shot'?5:3;g.fillCircle(e.x,e.y,r);if(e.type==='blast'||e.type==='dust')for(let i=0;i<8;i++){const angle=i*Math.PI/4+e.id%9;const d=(e.type==='blast'?24-e.ttl:8-e.ttl)*2;g.fillCircle(e.x+Math.cos(angle)*d,e.y+Math.sin(angle)*d,2);}}
+    for(const p of s.shots){
+      if(p.kind==='grenade'){const id=`grenade-${p.id}`;activeWeaponSprites.add(id);this.placeWeapon(id,'weapon-grenade',p.x,p.y,1,0.7,p.rotation??0);continue;}
+      const length=Math.hypot(p.vx,p.vy)||1,ux=p.vx/length,uy=p.vy/length;
+      for(let i=5;i>=1;i--){const start=(i-1)*4,end=i*4;g.lineStyle(i>3?2:3,i>3?0x95a2a2:i>1?0xff9a58:0xffdf98,(6-i)*0.105);g.lineBetween(p.x-ux*end,p.y-uy*end,p.x-ux*start,p.y-uy*start);}
+      g.fillStyle(0xff9a50,0.25);g.fillCircle(p.x,p.y,7);
+      g.fillStyle(0xfff4bd);g.fillCircle(p.x,p.y,3);
+    }
+    for(const e of s.effects){
+      if(!this.seenEffects.has(e.id)){this.seenEffects.add(e.id);if(this.seenEffects.size>2000)this.seenEffects.clear();if(e.type==='blast')this.cameras.main.shake(170,0.008);else if(e.type==='shot'||e.type==='hit')this.cameras.main.shake(45,0.001);if(e.type==='empty')sting([160]);else if(e.type==='blast')sting([90,65]);else if(e.type==='shot')sting([260]);else if(e.type==='pin')pinSound();}
+      if(e.type==='pin'){const travel=20-e.ttl;g.lineStyle(2,0xe8e5d4,Math.min(1,e.ttl/8));g.strokeCircle(e.x+travel*1.4,e.y-travel*0.7,4);g.lineBetween(e.x+travel*1.4+4,e.y-travel*0.7,e.x+travel*1.4+7,e.y-travel*0.7+2);continue;}
+      if(e.type==='blast'){
+        const age=24-e.ttl,fade=e.ttl/24;
+        if(age<4){g.fillStyle(0xffffff,(4-age)*0.19);g.fillCircle(e.x,e.y,15+age*7);g.fillStyle(0xffe391,0.85);g.fillCircle(e.x,e.y,8+age*4);}
+        if(age>=2&&age<16){g.lineStyle(age<7?5:3,age<7?0xffd478:0xc3d1c7,Math.min(0.85,fade));g.strokeCircle(e.x,e.y,age*4.2);}
+        for(let i=0;i<14;i++){const angle=(i*2.39996+e.id*0.37),speed=1.5+((e.id+i*7)%7)*0.35,d=age*speed;g.fillStyle(age<8?0xffb453:0x8798a0,fade*(0.45+(i%3)*0.12));g.fillCircle(e.x+Math.cos(angle)*d,e.y+Math.sin(angle)*d-age*0.25,i%4===0?4:2.5);}
+        continue;
+      }
+      g.fillStyle(e.type==='shot'?0xffe7a3:0xd6bd91,Math.min(0.7,e.ttl/20));g.fillCircle(e.x,e.y,e.type==='shot'?5:3);
+      if(e.type==='dust')for(let i=0;i<8;i++){const angle=i*Math.PI/4+e.id%9,d=(12-e.ttl)*2;g.fillCircle(e.x+Math.cos(angle)*d,e.y+Math.sin(angle)*d,2);}
+    }
     for (const a of s.actors) {
       const latest=snapshots.at(-1),renderTick=latest?latest.tick-6+Math.min(3,(performance.now()-latest.received)/(1000/60)):0;
       const next=snapshots.find(frame=>frame.tick>=renderTick),previous=[...snapshots].reverse().find(frame=>frame.tick<=renderTick);

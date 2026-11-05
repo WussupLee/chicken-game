@@ -17,7 +17,7 @@ export interface Box { x: number; y: number; w: number; h: number }
 export interface Actor { id: string; name: string; bot: boolean; slot: number; hat: number; x: number; y: number; vx: number; vy: number; rotation: number; angularVelocity: number; settleTicks: number; facing: number; aimUp: boolean; aimDiagonal: boolean; alive: boolean; ragdoll: boolean; grounded: boolean; groundPlatform: number; dropPlatform: number; crouch: boolean; sliding: boolean; flap: boolean; wall: number; wallSlide: boolean; ledgeSide: number; ledgeX: number; ledgeY: number; ledgeLock: number; jumpGrace: number; jumpBuffer: number; slideTicks: number; climbTicks: number; climbStartX: number; climbStartY: number; climbTargetX: number; climbTargetY: number; throwTicks: number; swingTicks: number; comboStage: 0 | 1 | 2 | 3; comboQueued: boolean; swingFacing: number; swingUp: boolean; swingDiagonal: boolean; grenadeFuse: number; emptyTicks: number; firePickupHeld: boolean; chargeKind: 'none' | 'gun' | 'body' | 'grenade' | 'sword'; chargeButton: 'fire' | 'grab' | null; chargeTicks: number; throwX: number; throwY: number; weapon: Weapon | null; heldBody: string | null; ammo: number; wins: number; prev: Input; cooldown: number; cluck: boolean }
 export interface Item { id: number; type: Weapon; x: number; y: number; ammo: number; heldBy: string | null; padIndex?: number; loose?: boolean; vx?: number; vy?: number }
 export interface PickupPad { x: number; y: number; itemId: number | null; cooldown: number; appearing: number }
-export interface Shot { id: number; kind: Exclude<Weapon, 'sword'>; owner: string; x: number; y: number; vx: number; vy: number; ttl: number; radius: number }
+export interface Shot { id: number; kind: Exclude<Weapon, 'sword'>; owner: string; x: number; y: number; vx: number; vy: number; ttl: number; radius: number; rotation?: number; angularVelocity?: number }
 export interface ThrownGun { id: number; type: Exclude<Weapon, 'grenade'>; ammo: number; owner: string; x: number; y: number; vx: number; vy: number; rotation: number; angularVelocity: number; spent: boolean }
 export type CoverKind = 'crate' | 'door' | 'wall';
 export interface CoverSeed extends Box { kind: CoverKind }
@@ -170,8 +170,8 @@ export function predictActorMovement(actor: Actor, input: Input, arena: Arena, c
   actor.prev = { ...input };
 }
 export const WEAPON_STATS: Record<Weapon, { ammo: number; cooldown: number; projectileSpeed: number }> = {
-  pistol: { ammo: 9, cooldown: 14, projectileSpeed: 14 },
-  submachine: { ammo: 24, cooldown: 6, projectileSpeed: 14 },
+  pistol: { ammo: 9, cooldown: 14, projectileSpeed: 16 },
+  submachine: { ammo: 24, cooldown: 6, projectileSpeed: 16 },
   grenade: { ammo: 1, cooldown: 38, projectileSpeed: 7 },
   sword: { ammo: 0, cooldown: 18, projectileSpeed: 0 }
 };
@@ -233,23 +233,54 @@ function blast(s: GameState, x: number, y: number, owner: string, radius: number
 }
 function updateShots(s: GameState, arena: Arena): void {
   for (const shot of s.shots) {
-    const oldX = shot.x, oldY = shot.y;
-    shot.x += shot.vx; shot.y += shot.vy; shot.ttl--;
-    if (shot.kind === 'grenade') shot.vy += 0.2;
-    const area = { x: shot.x - shot.radius, y: shot.y - shot.radius, w: shot.radius * 2, h: shot.radius * 2 };
-    const solid = [...arena.blocks, ...arena.platforms, ...s.cover].find(b => overlap(area,b) && (shot.kind !== 'grenade' || !arena.platforms.includes(b) || (oldY <= b.y && shot.vy >= 0)));
-    let hit = shot.x < -30 || shot.x > WIDTH+30 || shot.y < -30 || shot.y > HEIGHT+30;
-    if (solid) {
-      if (shot.kind === 'grenade') { if (oldY <= solid.y) { shot.y = solid.y - shot.radius; shot.vy = -Math.abs(shot.vy)*0.55; shot.vx *= 0.8; } else { shot.x = oldX; shot.vx *= -0.5; } }
-      else { hit = true; const cover = s.cover.find(c => c === solid); if (cover) { cover.hp--; if (cover.hp <= 0) { s.cover = s.cover.filter(c => c !== cover); s.effects.push({ id: nextId++, type: 'dust', x: cover.x+cover.w/2, y: cover.y+cover.h/2, ttl: 12 }); } } s.effects.push({ id: nextId++, type: 'hit', x: shot.x, y: shot.y, ttl: 9 }); }
+    const grenade=shot.kind==='grenade';
+    const steps=Math.max(1,Math.ceil(Math.max(Math.abs(shot.vx),Math.abs(shot.vy))/4));
+    const dx=shot.vx/steps,dy=shot.vy/steps;
+    const solids=[...arena.blocks,...s.cover];
+    let hit=false;
+    shot.ttl--;
+    for(let step=0;step<steps&&!hit;step++){
+      const oldX=shot.x,oldY=shot.y;
+      if(grenade){
+        shot.x+=dx;
+        const horizontal=dx===0?undefined:solids.find(b=>overlap({x:shot.x-shot.radius,y:shot.y-shot.radius,w:shot.radius*2,h:shot.radius*2},b));
+        if(horizontal){shot.x=dx>0?horizontal.x-shot.radius:horizontal.x+horizontal.w+shot.radius;shot.vx*=-0.5;shot.angularVelocity=-(shot.angularVelocity??0)*0.65;}
+        shot.y+=dy;
+        const area={x:shot.x-shot.radius,y:shot.y-shot.radius,w:shot.radius*2,h:shot.radius*2};
+        const vertical=solids.find(b=>overlap(area,b))??(dy>0?arena.platforms.find(b=>oldY+shot.radius<=b.y&&shot.y+shot.radius>=b.y&&shot.x+shot.radius>b.x&&shot.x-shot.radius<b.x+b.w):undefined);
+        if(vertical){
+          if(dy>=0){shot.y=vertical.y-shot.radius;shot.vy=Math.abs(shot.vy)<0.7?0:-Math.abs(shot.vy)*0.55;shot.vx*=0.86;}
+          else {shot.y=vertical.y+vertical.h+shot.radius;shot.vy=Math.abs(shot.vy)*0.4;}
+          shot.angularVelocity=(shot.angularVelocity??0)*0.8;
+        }
+        if(shot.vy===0&&Math.abs(shot.vx)<0.12){shot.vx=0;shot.angularVelocity=0;}
+      }else{
+        shot.x+=dx;shot.y+=dy;
+        const area={x:shot.x-shot.radius,y:shot.y-shot.radius,w:shot.radius*2,h:shot.radius*2};
+        const solid=[...solids,...arena.platforms].find(b=>overlap(area,b));
+        if(solid){
+          const cover=s.cover.find(c=>c===solid);
+          if(cover){cover.hp--;if(cover.hp<=0){s.cover=s.cover.filter(c=>c!==cover);s.effects.push({id:nextId++,type:'dust',x:cover.x+cover.w/2,y:cover.y+cover.h/2,ttl:12});}}
+          s.effects.push({id:nextId++,type:'hit',x:shot.x,y:shot.y,ttl:9});hit=true;
+        }
+      }
+      if(!hit)for(const actor of s.actors)if(actor.alive&&actor.id!==shot.owner&&overlap(actorBox(actor),{x:shot.x-shot.radius,y:shot.y-shot.radius,w:shot.radius*2,h:shot.radius*2})){
+        if(grenade)blast(s,shot.x,shot.y,shot.owner,65);
+        else {kill(actor,s.actors.find(a=>a.id===shot.owner));s.effects.push({id:nextId++,type:'hit',x:shot.x,y:shot.y,ttl:9});}
+        hit=true;break;
+      }
+      if(shot.x < -30 || shot.x > WIDTH+30 || shot.y < -30 || shot.y > HEIGHT+30)hit=true;
+      if(grenade&&oldX===shot.x&&oldY===shot.y&&shot.vx===0&&shot.vy===0)break;
     }
-    if (shot.kind === 'grenade' && !hit) for (const actor of s.actors) if (actor.alive && actor.id !== shot.owner) {
-      const struck = [0.25, 0.5, 0.75, 1].some(t => overlap(actorBox(actor), {x:oldX+(shot.x-oldX)*t-shot.radius,y:oldY+(shot.y-oldY)*t-shot.radius,w:shot.radius*2,h:shot.radius*2}));
-      if (struck) { blast(s,shot.x,shot.y,shot.owner,65); hit = true; break; }
+    if(grenade&&!hit){
+      const supported=shot.vy===0&&[...solids,...arena.platforms].some(b=>Math.abs(shot.y+shot.radius-b.y)<0.5&&shot.x+shot.radius>b.x&&shot.x-shot.radius<b.x+b.w);
+      if(supported){shot.vx*=0.86;if(Math.abs(shot.vx)<0.12)shot.vx=0;}
+      else shot.vy+=0.2;
+      shot.rotation=(shot.rotation??0)+(shot.angularVelocity??shot.vx*0.025);
+      shot.angularVelocity=supported&&shot.vx===0?0:(shot.angularVelocity??shot.vx*0.025)*0.96;
     }
-    if (shot.kind !== 'grenade' && !hit) for (const a of s.actors) if (a.alive && a.id !== shot.owner && overlap(actorBox(a), area)) { kill(a, s.actors.find(p => p.id === shot.owner)); hit = true; s.effects.push({ id: nextId++, type: 'hit', x: shot.x, y: shot.y, ttl: 9 }); break; }
-    if (shot.ttl <= 0 && !hit) { if (shot.kind === 'grenade') blast(s, shot.x, shot.y, shot.owner, 65); hit = true; }
-    if (hit) shot.ttl = 0;
+    if(shot.ttl<=0&&!hit){if(grenade)blast(s,shot.x,shot.y,shot.owner,65);hit=true;}
+    if(hit)shot.ttl=0;
   }
   s.shots = s.shots.filter(p => p.ttl > 0);
 }
@@ -325,7 +356,7 @@ function releaseThrow(s: GameState, a: Actor): void {
     if (a.grenadeFuse > 0) {
       const speed = 4 + 6 * power;
       const aimed = a.throwX !== 0 || a.throwY !== 0;
-      s.shots.push({id:nextId++,kind:'grenade',owner:a.id,x:aimed?hand.x:a.x+a.facing*17,y:aimed?hand.y:a.y-12,vx:aimed?a.throwX*speed:0,vy:aimed?a.throwY*speed:1,ttl:a.grenadeFuse,radius:5});
+      s.shots.push({id:nextId++,kind:'grenade',owner:a.id,x:aimed?hand.x:a.x+a.facing*17,y:aimed?hand.y:a.y-12,vx:aimed?a.throwX*speed:0,vy:aimed?a.throwY*speed:1,ttl:a.grenadeFuse,radius:5,rotation:0,angularVelocity:aimed?a.throwX*0.16:0});
       s.effects.push({id:nextId++,type:'shot',x:a.x,y:a.y-18,ttl:8});
       a.grenadeFuse = 0; a.ammo--; a.cooldown = WEAPON_STATS.grenade.cooldown;
       if (a.ammo <= 0) a.weapon = null;
