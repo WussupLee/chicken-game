@@ -402,7 +402,7 @@
     "file": "hero/ledge_climb.png",
     "frameWidth": 128,
     "frameHeight": 128,
-    "frames": 11,
+    "frames": 4,
     "fps": 18,
     "runtime": true
   },
@@ -413,7 +413,7 @@
     "file": "hero/ledge_climb-gun.png",
     "frameWidth": 128,
     "frameHeight": 128,
-    "frames": 11,
+    "frames": 4,
     "fps": 18,
     "runtime": true
   },
@@ -424,7 +424,7 @@
     "file": "hero/ledge_climb-up.png",
     "frameWidth": 128,
     "frameHeight": 128,
-    "frames": 11,
+    "frames": 4,
     "fps": 18,
     "runtime": true
   },
@@ -435,7 +435,7 @@
     "file": "hero/ledge_climb-diag.png",
     "frameWidth": 128,
     "frameHeight": 128,
-    "frames": 11,
+    "frames": 4,
     "fps": 18,
     "runtime": true
   },
@@ -876,6 +876,17 @@
     "frameWidth": 128,
     "frameHeight": 128,
     "frames": 2,
+    "fps": 8,
+    "runtime": true
+  },
+  {
+    "id": "hero-corpse",
+    "label": "corpse · Base",
+    "group": "Character",
+    "file": "hero/corpse.png",
+    "frameWidth": 128,
+    "frameHeight": 128,
+    "frames": 1,
     "fps": 8,
     "runtime": true
   },

@@ -1,6 +1,11 @@
+import SOURCE_ANCHORS from '../client/public/assets/hero/anchors.json';
+type AimAnchors=Record<string,{gun:number[];up:number[];diag:number[]}[]>;
+let weaponAnchors=SOURCE_ANCHORS as AimAnchors;
+export function setWeaponAnchors(value:AimAnchors):void{weaponAnchors=value;}
 export const WIDTH = 960;
 export const HEIGHT = 540;
 export const TICK = 1 / 60;
+export const ACTOR_BOXES = {standing:{half:10,height:36},crouch:{half:10,height:22},slide:{half:17,height:17},ragdoll:{half:17,height:15}} as const;
 export const HATS = ['Bare', 'Top Hat', 'Cowboy', 'Crown', 'Chef', 'Propeller', 'Viking', 'Party'];
 export const COLORS = [0xffdc59, 0xff8484, 0x85ddff, 0xb6f68e];
 export const WEAPONS = ['pistol', 'submachine', 'grenade', 'sword'] as const;
@@ -60,7 +65,7 @@ export function makeActor(id: string, name: string, bot: boolean, slot: number):
 export function newGame(seed = Date.now()): GameState { return { phase: 'lobby', round: 0, timer: 0, phaseTimer: 0, arenaIndex: 0, spawnOffsets: [], actors: [], items: [], pads: [], shots: [], thrownGuns: [], cover: [], effects: [], message: '', winnerId: null, seed }; }
 function nextRandom(s: GameState): number { s.seed = (Math.imul(s.seed, 1664525) + 1013904223) >>> 0; return s.seed / 4294967296; }
 const overlap = (a: Box, b: Box) => a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
-const actorBox = (a: Actor): Box => ({ x: a.x - (a.sliding ? 21 : 11), y: a.y - (a.ragdoll || a.crouch || a.sliding ? 15 : 27), w: a.sliding ? 42 : 22, h: a.ragdoll || a.crouch || a.sliding ? 15 : 27 });
+const actorBox = (a: Actor): Box => {const size=a.sliding?ACTOR_BOXES.slide:a.ragdoll?ACTOR_BOXES.ragdoll:a.crouch?ACTOR_BOXES.crouch:ACTOR_BOXES.standing;return {x:a.x-size.half,y:a.y-size.height,w:size.half*2,h:size.height};};
 export function startRound(s: GameState): void {
   s.phase = 'round'; s.round++; s.timer = 45; s.phaseTimer = 0; s.arenaIndex = (s.round - 1) % ARENAS.length; s.shots = []; s.thrownGuns = [];
   const arena = ARENAS[s.arenaIndex];
@@ -99,14 +104,14 @@ function move(a: Actor, input: Input, arena: Arena, cover: Cover[], effects: Eff
     a.aimDiagonal = input.up && axis === a.facing;
     if ((input.down && !a.prev.down) || a.ragdoll) { a.ledgeSide = 0; a.ledgeLock = 12; a.vy = 2; droppedFromLedge = true; }
     else if (input.jump && !a.prev.jump) {
-      const x = a.ledgeX + a.ledgeSide * 13, y = a.ledgeY;
-      const landing = { x: x - 11, y: y - 27, w: 22, h: 27 };
+      const x = a.ledgeX + a.ledgeSide * (ACTOR_BOXES.standing.half+2), y = a.ledgeY;
+      const landing = { x: x - ACTOR_BOXES.standing.half, y: y - ACTOR_BOXES.standing.height, w: ACTOR_BOXES.standing.half*2, h: ACTOR_BOXES.standing.height };
       if (![...solids, ...arena.platforms].some(b => overlap(landing, b))) {
         a.climbStartX = a.x; a.climbStartY = a.y; a.climbTargetX = x; a.climbTargetY = y;
         a.vx = 0; a.vy = 0; a.grounded = false; a.ledgeSide = 0; a.ledgeLock = 12; a.climbTicks = 10; a.jumpBuffer = 0; return;
       }
       return;
-    } else { a.x = a.ledgeX - a.ledgeSide * 11; a.y = a.ledgeY + 18; a.vx = 0; a.vy = 0; a.wallSlide = false; a.grounded = false; return; }
+    } else { a.x = a.ledgeX - a.ledgeSide * ACTOR_BOXES.standing.half; a.y = a.ledgeY + 18; a.vx = 0; a.vy = 0; a.wallSlide = false; a.grounded = false; return; }
   }
   const dropping = dropCombo && a.grounded && a.groundPlatform >= 0;
   if (dropping) { a.dropPlatform = a.groundPlatform; a.groundPlatform = -1; a.grounded = false; a.y += 3; a.vy = 2; a.jumpGrace = 0; a.jumpBuffer = 0; a.slideTicks = 0; a.sliding = false; }
@@ -134,16 +139,19 @@ function move(a: Actor, input: Input, arena: Arena, cover: Cover[], effects: Eff
   if (a.flap && a.vy > 1.5) a.vy = 1.5;
   a.vy = Math.min(a.vy, 14);
   a.x += a.vx; a.wall = 0;
-  const halfWidth = a.sliding ? 21 : 11;
+  const halfWidth = a.sliding ? ACTOR_BOXES.slide.half : ACTOR_BOXES.standing.half;
   if (!arena.openSides) a.x = Math.max(halfWidth, Math.min(WIDTH - halfWidth, a.x));
   for (const b of solids) if (oldY > b.y + 4 && overlap(actorBox(a), b)) { if (a.vx > 0) { a.x = b.x - halfWidth; a.wall = 1; } else if (a.vx < 0) { a.x = b.x + b.w + halfWidth; a.wall = -1; } a.vx = 0; a.slideTicks = 0; a.sliding = false; }
   if (!a.grounded && a.vy > 0 && axis && !input.down && !a.ragdoll && !a.ledgeLock) {
     for (const b of [...arena.blocks, ...arena.platforms]) {
+      if(b.w < ACTOR_BOXES.standing.half*2+8)continue;
       const edge = axis > 0 ? b.x : b.x + b.w;
-      const targetX = edge - axis * 11;
-      if (Math.min(Math.abs(a.x-targetX),Math.abs(oldX-targetX)) > 12 || a.y < b.y - 8 || a.y > b.y + 26 || oldY > b.y + 26) continue;
-      const top = { x: edge + axis * 2, y: b.y - 27, w: 10, h: 27 };
-      if ([...solids, ...arena.platforms].some(other => other !== b && overlap(top, other))) continue;
+      const targetX = edge - axis * ACTOR_BOXES.standing.half;
+      if (Math.min(Math.abs(a.x-targetX),Math.abs(oldX-targetX)) > 10 || a.y < b.y - 4 || a.y > b.y + 18 || oldY > b.y + 18) continue;
+      const landingX=edge+axis*(ACTOR_BOXES.standing.half+2);
+      const landing={x:landingX-ACTOR_BOXES.standing.half,y:b.y-ACTOR_BOXES.standing.height,w:ACTOR_BOXES.standing.half*2,h:ACTOR_BOXES.standing.height};
+      const shoulder={x:edge-axis*ACTOR_BOXES.standing.half-5,y:b.y-18,w:10,h:18};
+      if ([...solids,...arena.platforms].some(other=>other!==b&&(overlap(landing,other)||overlap(shoulder,other)))) continue;
       a.ledgeSide = axis; a.ledgeX = edge; a.ledgeY = b.y;
       a.x = targetX; a.y = b.y + 18; a.vx = 0; a.vy = 0; a.facing = -axis; a.wallSlide = false; a.grounded = false; a.jumpBuffer = 0; return;
     }
@@ -156,7 +164,7 @@ function move(a: Actor, input: Input, arena: Arena, cover: Cover[], effects: Eff
     if (isPlatform && (arena.platforms.indexOf(b) === a.dropPlatform || a.vy < 0 || oldY > b.y + 3)) continue;
     if (overlap(actorBox(a), b)) {
       if (a.vy >= 0 && oldY <= b.y + 4) { a.y = b.y; a.vy = 0; a.grounded = true; a.groundPlatform = isPlatform ? arena.platforms.indexOf(b) : -1; a.flap = false; }
-      else if (!isPlatform && a.vy < 0) { a.y = b.y + b.h + 27; a.vy = 0; }
+      else if (!isPlatform && a.vy < 0) { a.y = b.y + b.h + ACTOR_BOXES.standing.height; a.vy = 0; }
     }
   }
   if (!wasGrounded && a.grounded) effects.push({ id: nextId++, type: 'dust', x: a.x, y: a.y, ttl: 10 });
@@ -186,6 +194,14 @@ function weaponOrigin(a: Actor): { x: number; y: number } {
   if (a.aimUp) return { x: a.x + a.facing * (a.sliding ? 5 : a.ledgeSide ? 8 : 12), y: a.y - (a.sliding ? 39 : a.ledgeSide ? 42 : 50) };
   return { x: a.x + a.facing * (a.sliding ? 23 : 26), y: a.y - (a.sliding ? 11 : a.ledgeSide ? 8 : 18) };
 }
+function gunMuzzleOrigin(a:Actor):{x:number;y:number}{
+  const pose=a.ledgeSide?'ledge_hang':a.sliding?'slide':a.crouch?'crouch':!a.grounded?(a.vy<0?'jump':'fall'):Math.abs(a.vx)>3.5?'run':Math.abs(a.vx)>0.7?'walk':'idle';
+  const aim=a.aimDiagonal?'diag':a.aimUp?'up':'gun';
+  const hand=weaponAnchors[pose]?.[0]?.[aim]??weaponAnchors.idle[0][aim];
+  const reach=a.aimDiagonal?6:a.aimUp?0:7;
+  const rise=a.aimDiagonal?-6:a.aimUp?-8:-3;
+  return {x:a.x+a.facing*(hand[0]-60+reach),y:a.y+hand[1]-80+rise};
+}
 function shoot(s: GameState, a: Actor): void {
   if (!a.weapon || a.weapon === 'grenade' || a.weapon === 'sword' || a.cooldown > 0 || a.ammo <= 0) return;
   const w = a.weapon;
@@ -195,7 +211,7 @@ function shoot(s: GameState, a: Actor): void {
   const scale = a.aimDiagonal ? Math.SQRT1_2 : 1;
   const directionX = a.aimUp && !a.aimDiagonal ? 0 : a.facing * scale;
   const directionY = a.aimUp ? -scale : 0;
-  const { x, y } = weaponOrigin(a);
+  const { x, y } = gunMuzzleOrigin(a);
   s.shots.push({ id: nextId++, kind: w, owner: a.id, x, y, vx: directionX * speed, vy: directionY * speed, ttl: 90, radius: 3 });
   s.effects.push({ id: nextId++, type: 'shot', x, y, ttl: 8 });
   if (!a.aimUp) a.vx -= a.facing * 0.2;
@@ -350,7 +366,7 @@ function releaseThrow(s: GameState, a: Actor): void {
     a.weapon = null; a.ammo = 0; a.emptyTicks = 0; a.swingTicks = 0; a.comboStage = 0; a.comboQueued = false;
   } else if (a.chargeKind === 'body' && a.heldBody) {
     const body = s.actors.find(other => other.id === a.heldBody);
-    if (body) {const speed=6+9*power;body.x=a.x+throwX*28;body.y=a.y-16;body.vx=throwX*speed;body.vy=throwY*speed-(upward?0:5+power*3);body.angularVelocity=a.facing*(0.2+power*0.25);body.settleTicks=0;}
+    if (body) {const speed=6+9*power;body.x=a.x+throwX*(ACTOR_BOXES.standing.half+ACTOR_BOXES.ragdoll.half+1);body.y=a.y-ACTOR_BOXES.ragdoll.height;body.vx=throwX*speed;body.vy=throwY*speed-(upward?0:5+power*3);body.angularVelocity=a.facing*(0.2+power*0.25);body.settleTicks=0;}
     a.heldBody = null;
   } else if (a.chargeKind === 'grenade' && a.weapon === 'grenade' && a.ammo > 0) {
     if (a.grenadeFuse > 0) {
@@ -438,7 +454,7 @@ export function tick(s: GameState, inputs: Record<string, Input>): void {
       if (a.grenadeFuse > 0 && --a.grenadeFuse === 0) blast(s,a.x,a.y-18,a.id,65);
       const holder = s.actors.find(other => other.alive && other.heldBody === a.id);
       if (holder) {
-        a.x = holder.x + holder.facing * 25; a.y = holder.y - 14;
+        a.x = holder.x + holder.facing * (ACTOR_BOXES.standing.half+ACTOR_BOXES.ragdoll.half-2); a.y = holder.y - ACTOR_BOXES.ragdoll.height;
         a.vx = 0; a.vy = 0; a.rotation = holder.facing < 0 ? Math.PI : 0; a.angularVelocity = 0; a.settleTicks = 0;
       } else {
         const oldX = a.x, oldY = a.y;
@@ -448,21 +464,21 @@ export function tick(s: GameState, inputs: Record<string, Input>): void {
         const boxes = [...ar.blocks, ...ar.platforms];
         let landed = false;
         for (const b of boxes) {
-          const overlapsX = a.x + 14 > b.x && a.x - 14 < b.x + b.w;
+          const overlapsX = a.x + ACTOR_BOXES.ragdoll.half > b.x && a.x - ACTOR_BOXES.ragdoll.half < b.x + b.w;
           if (overlapsX && a.vy >= 0 && oldY <= b.y && a.y >= b.y) {
             a.y = b.y; a.vy = Math.abs(a.vy) > 2.2 ? -Math.abs(a.vy) * 0.2 : 0;
             a.vx *= 0.78; a.angularVelocity *= 0.68; landed = true;
-          } else if (!ar.platforms.includes(b) && a.y > b.y && a.y - 14 < b.y + b.h) {
-            if (oldX + 14 <= b.x && a.x + 14 > b.x) { a.x = b.x - 14; a.vx = -Math.abs(a.vx) * 0.32; a.angularVelocity -= 0.12; }
-            else if (oldX - 14 >= b.x + b.w && a.x - 14 < b.x + b.w) { a.x = b.x + b.w + 14; a.vx = Math.abs(a.vx) * 0.32; a.angularVelocity += 0.12; }
+          } else if (!ar.platforms.includes(b) && a.y > b.y && a.y - ACTOR_BOXES.ragdoll.height < b.y + b.h) {
+            if (oldX + ACTOR_BOXES.ragdoll.half <= b.x && a.x + ACTOR_BOXES.ragdoll.half > b.x) { a.x = b.x - ACTOR_BOXES.ragdoll.half; a.vx = -Math.abs(a.vx) * 0.32; a.angularVelocity -= 0.12; }
+            else if (oldX - ACTOR_BOXES.ragdoll.half >= b.x + b.w && a.x - ACTOR_BOXES.ragdoll.half < b.x + b.w) { a.x = b.x + b.w + ACTOR_BOXES.ragdoll.half; a.vx = Math.abs(a.vx) * 0.32; a.angularVelocity += 0.12; }
           }
         }
-        if (a.x < 14 || a.x > WIDTH - 14) { a.x = Math.max(14, Math.min(WIDTH - 14, a.x)); a.vx *= -0.3; a.angularVelocity += Math.sign(a.vx) * 0.1; }
+        if (a.x < ACTOR_BOXES.ragdoll.half || a.x > WIDTH - ACTOR_BOXES.ragdoll.half) { a.x = Math.max(ACTOR_BOXES.ragdoll.half, Math.min(WIDTH - ACTOR_BOXES.ragdoll.half, a.x)); a.vx *= -0.3; a.angularVelocity += Math.sign(a.vx) * 0.1; }
         a.angularVelocity *= landed ? 0.84 : 0.995;
         a.vx *= landed ? 0.94 : 0.99;
         if (Math.abs(a.angularVelocity) < 0.008) a.angularVelocity = 0;
         a.settleTicks = landed && Math.abs(a.vx) < 0.4 && Math.abs(a.vy) < 0.4 && Math.abs(a.angularVelocity) < 0.02 ? a.settleTicks + 1 : 0;
-        if (a.settleTicks >= 12) { a.rotation = Math.cos(a.rotation) >= 0 ? 0 : Math.PI; a.angularVelocity = 0; a.vx = 0; }
+        if (a.settleTicks >= 12) { a.rotation = a.facing > 0 ? Math.PI/2 : -Math.PI/2; a.angularVelocity = 0; a.vx = 0; }
         if (Math.abs(a.vx) > 5) for (const other of s.actors) if (other.alive && Math.abs(other.x - a.x) < 20 && Math.abs(other.y - a.y) < 25) { other.weapon = null; other.ammo = 0; other.vx = a.vx * 0.6; a.vx *= 0.2; }
       }
       continue;

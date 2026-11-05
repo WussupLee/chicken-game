@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ARENAS, makeActor, newGame, predictActorMovement, startRound, tick, NO_INPUT, WEAPONS, WEAPON_STATS } from './game';
+import { ACTOR_BOXES, ARENAS, makeActor, newGame, predictActorMovement, startRound, tick, NO_INPUT, WEAPONS, WEAPON_STATS } from './game';
 import { botInput } from '../server/bot';
 
 describe('match simulation', () => {
@@ -94,11 +94,27 @@ describe('match simulation', () => {
     expect(a.ledgeSide).toBe(0);expect(a.ledgeLock).toBeGreaterThan(0);
   });
 
-  it('catches a ledge within the wider hand-reach window', () => {
+  it('rejects a ledge when another solid blocks the standing landing', () => {
     const s=newGame(34);s.actors=[makeActor('a','A',false,0),makeActor('b','B',false,1)];startRound(s);
     const a=s.actors[0];s.cover=[];a.x=47;a.y=382;a.vy=2;a.grounded=false;
     tick(s,{a:{...NO_INPUT,right:true}});
-    expect(a.ledgeSide).toBe(1);expect(a.x).toBe(59);
+    expect(a.ledgeSide).toBe(0);
+  });
+
+  it('has reachable clear top edges in every arena', () => {
+    for(const arenaIndex of [0,1,2]){
+      let catches=0;
+      for(const b of [...ARENAS[arenaIndex].blocks,...ARENAS[arenaIndex].platforms]){
+        if(b.y>=500||b.w<ACTOR_BOXES.standing.half*2+8)continue;
+        for(const side of [-1,1]){
+          const s=newGame(41);s.round=arenaIndex;s.actors=[makeActor('a','A',false,0),makeActor('b','B',false,1)];startRound(s);s.cover=[];
+          const a=s.actors[0];a.x=(side>0?b.x:b.x+b.w)-side*ACTOR_BOXES.standing.half;a.y=b.y+8;a.vy=2;a.grounded=false;
+          tick(s,{a:{...NO_INPUT,right:side>0,left:side<0}});
+          if(a.ledgeSide===side)catches++;
+        }
+      }
+      expect(catches).toBeGreaterThan(0);
+    }
   });
 
   it('uses the sword swing to defeat an exposed opponent but stops at cover', () => {
@@ -161,6 +177,9 @@ describe('match simulation', () => {
     tick(s, { a: NO_INPUT });
     expect(a.heldBody).toBeNull();
     expect(b.vx).toBeGreaterThan(5);
+    for(let i=0;i<240;i++)tick(s,{});
+    expect(b.settleTicks).toBeGreaterThanOrEqual(12);
+    expect(b.angularVelocity).toBe(0);
   });
 
   it('starts every round unarmed with one sword and five other weapon pads', () => {
@@ -472,7 +491,7 @@ describe('match simulation', () => {
     const input={...NO_INPUT,left:true};
     const positions:number[]=[];
     for(let i=0;i<20;i++){predictActorMovement(a,input,ar,[]);positions.push(a.x);}
-    expect(Math.min(...positions)).toBeGreaterThanOrEqual(35);
+    expect(Math.min(...positions)).toBeGreaterThanOrEqual(24+ACTOR_BOXES.standing.half);
     expect(new Set(positions.slice(5)).size).toBe(1);
   });
 
@@ -487,7 +506,9 @@ describe('match simulation', () => {
     expect(body.y).toBeLessThanOrEqual(504);
     expect(Math.abs(body.vx)).toBeLessThan(3);
     expect(body.angularVelocity).toBeLessThan(0.2);
-    expect(body.rotation === 0 || body.rotation === Math.PI).toBe(true);
+    expect(body.settleTicks).toBeGreaterThanOrEqual(12);
+    expect(Math.abs(body.rotation)).toBe(Math.PI/2);
+    expect(body.angularVelocity).toBe(0);
   });
 
   it('has bots finish rounds by elimination on each arena', () => {

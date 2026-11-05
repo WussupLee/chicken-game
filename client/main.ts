@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { io } from 'socket.io-client';
-import { ARENAS, COLORS, HEIGHT, NO_INPUT, predictActorMovement, SWORD_COMBO, WIDTH, type Actor, type GameState, type Input, type Weapon } from '../shared/game';
+import { ACTOR_BOXES, ARENAS, COLORS, HEIGHT, NO_INPUT, predictActorMovement, SWORD_COMBO, WIDTH, type Actor, type GameState, type Input, type Weapon } from '../shared/game';
 import { containCombatants, frameCombatants, type CameraFrame } from '../shared/camera';
 import HERO_MANIFEST from './public/assets/hero/manifest.json';
 import './style.css';
@@ -18,6 +18,8 @@ let screen: 'menu' | 'join' | 'lobby' | 'game' | 'controls' = 'menu';
 let game: Phaser.Game | null = null;
 let lastLobbyKey = '';
 let lastOverlayKey = '';
+let lastHudKey = '';
+let lastSpectateKey = '';
 const keys = new Set<string>();
 const defaultBindings: Record<keyof Input, string> = { left: 'KeyA', right: 'KeyD', up: 'KeyW', down: 'KeyS', jump: 'Space', fire: 'KeyK', grab: 'KeyJ', ragdoll: 'KeyL', cluck: 'KeyE' };
 const savedBindings = JSON.parse(localStorage.getItem('chicken-bindings') || '{}') as Partial<Record<keyof Input,string>>;
@@ -137,9 +139,11 @@ function render(): void {
   const weaponArt:Record<Weapon,string>={pistol:'glock-p80.png',submachine:'mp5a3.png',grenade:'grenade.png',sword:'sword.png'};
   const empty=!!mine?.weapon&&mine.weapon!=='sword'&&mine.ammo===0;
   const weaponCard=mine?.weapon?`<div class="weapon-card${empty?' empty':''}"><img src="/assets/weapons/${weaponArt[mine.weapon]}" alt=""/><span>${esc(mine.weapon.toUpperCase())}<strong>${mine.weapon==='sword'?'∞':mine.ammo}</strong>${empty?'<em>EMPTY</em>':mine.grenadeFuse?'<em>PIN OUT</em>':''}</span></div>`:mine?.heldBody?'<div class="weapon-card">BODY HELD</div>':'<div class="weapon-card">UNARMED</div>';
-  document.querySelector('#hud')!.innerHTML=`<div class="scoreboard">${scores}</div><div class="hud-right"><div class="score">ROUND ${state.round} · ${Math.max(0,Math.ceil(state.timer))}s</div>${weaponCard}</div>`;
+  const hudHtml=`<div class="scoreboard">${scores}</div><div class="hud-right"><div class="score">ROUND ${state.round} · ${Math.max(0,Math.ceil(state.timer))}s</div>${weaponCard}</div>`;
+  if(!hadCanvas||hudHtml!==lastHudKey){document.querySelector('#hud')!.innerHTML=hudHtml;lastHudKey=hudHtml;}
   const watched=spectateTarget==='wide'?'WIDE ARENA':state.actors.find(a=>a.id===spectateTarget)?.name;
-  document.querySelector('#spectate-hud')!.innerHTML=mine&&!mine.alive&&state.phase==='round'?`<div class="spectate-card">SPECTATING ${esc(watched||'ARENA')} · A NEXT</div>`:'';
+  const spectateHtml=mine&&!mine.alive&&state.phase==='round'?`<div class="spectate-card">SPECTATING ${esc(watched||'ARENA')} · A NEXT</div>`:'';
+  if(!hadCanvas||spectateHtml!==lastSpectateKey){document.querySelector('#spectate-hud')!.innerHTML=spectateHtml;lastSpectateKey=spectateHtml;}
   if (overlay!==lastOverlayKey) {document.querySelector('#phase-overlay')!.innerHTML=overlay;lastOverlayKey=overlay;document.querySelector('#again')?.addEventListener('click',()=>socket.emit('start'));}
 }
 
@@ -148,7 +152,8 @@ let heroTiming:Record<string,number>={};
 type HeroAnchor = { gun:[number,number]; up:[number,number]; diag:[number,number] };
 type HeroAnchors = Record<string, HeroAnchor[]>;
 function heroPose(a: Actor): HeroPose {
-  if (!a.alive || a.ragdoll) return 'ragdoll';
+  if (!a.alive) return a.settleTicks>=12?'corpse':'ragdoll';
+  if (a.ragdoll) return 'ragdoll';
   if (a.swingTicks && a.comboStage) return (`combo_${a.comboStage}${a.swingTicks <= SWORD_COMBO[a.comboStage].endTicks ? '_end' : ''}`) as HeroPose;
   if (a.throwTicks) return 'throw';
   if (a.ledgeSide) return 'ledge_hang';
@@ -326,7 +331,7 @@ class ArenaScene extends Phaser.Scene {
       const local=a.id===myId&&predictedActor,subTick=Math.max(0,Math.min(1,(performance.now()-predictedAt)/(1000/60)));
       let px=local?predictedActor!.x+predictedActor!.vx*subTick+correctionX:from&&to?from.x+(to.x-from.x)*blend:from?.x??to?.x??a.x;
       let py=local?predictedActor!.y+predictedActor!.vy*subTick+correctionY:from&&to?from.y+(to.y-from.y)*blend:from?.y??to?.y??a.y;
-      if(a.id===myId&&predictedActor&&[...ar.blocks,...s.cover].some(b=>px+11>b.x&&px-11<b.x+b.w&&py>b.y&&py-27<b.y+b.h)){px=predictedActor.x;py=predictedActor.y;correctionX=0;correctionY=0;}
+      if(a.id===myId&&predictedActor&&[...ar.blocks,...s.cover].some(b=>px+ACTOR_BOXES.standing.half>b.x&&px-ACTOR_BOXES.standing.half<b.x+b.w&&py>b.y&&py-ACTOR_BOXES.standing.height<b.y+b.h)){px=predictedActor.x;py=predictedActor.y;correctionX=0;correctionY=0;}
       if(a.id===myId){const decay=Math.exp(-Math.min(delta,50)/70);correctionX*=decay;correctionY*=decay;if(Math.abs(correctionX)<0.1)correctionX=0;if(Math.abs(correctionY)<0.1)correctionY=0;}
       const pose=this.visualPose(a.id===myId&&predictedActor?predictedActor:a,time);
       let animation=this.animationStart.get(a.id);
@@ -338,7 +343,7 @@ class ArenaScene extends Phaser.Scene {
       const facing=a.swingTicks?a.swingFacing:a.facing;
       const frame=heroFrame(a,pose,time-animation.at);
       const bodyFlip=pose==='ledge_hang'?a.ledgeSide<0:pose==='ledge_climb'?a.climbTargetX<a.climbStartX:facing<0;
-      img.setTexture(texture,frame).setPosition(px,py).setScale(1).setFlipX(bodyFlip).setRotation(!a.alive?a.rotation:a.ragdoll?Math.PI/2:0).setVisible(true);
+      img.setTexture(texture,frame).setPosition(px,py).setScale(1).setFlipX(bodyFlip).setRotation(pose==='corpse'?0:!a.alive?a.rotation:a.ragdoll?Math.PI/2:0).setVisible(true);
       g.fillStyle(COLORS[a.slot],0.8);g.fillRoundedRect(px-18,py+2,36,5,2);
       if (a.weapon) {
         const id='actor-'+a.id;

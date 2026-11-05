@@ -25,6 +25,7 @@ public static class ChickenTemplateArt {
   static bool Same(Color a, Color b) { return a.ToArgb()==b.ToArgb(); }
   static bool IsHead(Color c) { return c.A>0 && c.R==102 && c.G==190 && c.B==203; }
   static bool IsFrontArm(Color c) { return c.A>0 && c.R==169 && c.G==66 && c.B==119; }
+  static bool IsRearArm(Color c) { return c.A>0 && c.R==215 && c.G==126 && c.B==126; }
   static bool IsInk(Color c) { return c.A>0 && c.R==0 && c.G==0 && c.B==0; }
   static Bitmap CopyFrame(Bitmap src, int frame) {
     var output=new Bitmap(128,128,PixelFormat.Format32bppArgb);
@@ -94,7 +95,7 @@ public static class ChickenTemplateArt {
     }
     if(right<0){left=59;top=47;right=70;bottom=58;}
     var pink=new bool[128,128];
-    for(int y=0;y<128;y++)for(int x=0;x<128;x++)pink[x,y]=IsFrontArm(image.GetPixel(x,y));
+    for(int y=0;y<128;y++)for(int x=0;x<128;x++)pink[x,y]=IsFrontArm(image.GetPixel(x,y))||IsRearArm(image.GetPixel(x,y));
     var erase=new List<Point>();
     for(int y=0;y<128;y++)for(int x=0;x<128;x++){
       var c=image.GetPixel(x,y);
@@ -109,6 +110,9 @@ public static class ChickenTemplateArt {
     }
     foreach(var p in erase)image.SetPixel(p.X,p.Y,Clear);
     int shoulderX=left+8,shoulderY=bottom+5;
+    Stroke(image,shoulderX-4,shoulderY+1,shoulderX-7,shoulderY+8,2,Ink);
+    Stroke(image,shoulderX-4,shoulderY+1,shoulderX-7,shoulderY+8,1,Hand);
+    for(int y=0;y<128;y++)for(int x=0;x<128;x++){var c=source.GetPixel(x,y);if(c.R==120&&c.G==166&&c.B==108&&c.A>0)image.SetPixel(x,y,c);}
     if(aim=="up"){handX=left+11;handY=top-1;}
     else if(aim=="diag"){handX=left+16;handY=top+3;}
     else {handX=left+16;handY=bottom+6;}
@@ -142,7 +146,7 @@ public static class ChickenTemplateArt {
           }
         }
         for(int y=0;y<128;y++)for(int x=0;x<128;x++){
-          int xx=60+(int)Math.Floor((x-shiftX[frame]-60)/1.5),yy=80+(int)Math.Floor((y-shiftY[frame]-80)/1.5);
+          int xx=60+(int)Math.Floor((x-shiftX[frame]-60)/1.2),yy=80+(int)Math.Floor((y-shiftY[frame]-80)/1.2);
           if(xx>=0&&xx<128&&yy>=0&&yy<128&&!effect[xx,yy])output.SetPixel(x,y,old.GetPixel(xx,yy));
         }
         if(combo)for(int y=0;y<128;y++)for(int x=0;x<128;x++)if(effect[x,y]){
@@ -152,6 +156,23 @@ public static class ChickenTemplateArt {
         frames[frame]=output;old.Dispose();
       }
       source.Dispose();SaveFrames(frames,file);foreach(var frame in frames)frame.Dispose();
+    }
+  }
+  public static void CreateCorpse(string input,string output){
+    using(var sheet=new Bitmap(input))using(var corpse=new Bitmap(128,128,PixelFormat.Format32bppArgb)){
+      for(int y=0;y<128;y++)for(int x=0;x<128;x++){
+        int xx=140-y,yy=x;
+        if(xx>=0&&xx<128&&yy>=0&&yy<128)corpse.SetPixel(xx,yy,sheet.GetPixel(x,y));
+      }
+      corpse.Save(output,ImageFormat.Png);
+    }
+  }
+  public static void FinishClimb(string climbPath,string idlePath){
+    using(var climb=new Bitmap(climbPath))using(var idle=new Bitmap(idlePath))using(var result=new Bitmap(4*128,128,PixelFormat.Format32bppArgb))using(var graphics=Graphics.FromImage(result)){
+      for(int frame=0;frame<3;frame++)graphics.DrawImage(climb,new Rectangle(frame*128,0,128,128),new Rectangle(frame*128,0,128,128),GraphicsUnit.Pixel);
+      graphics.DrawImage(idle,new Rectangle(3*128,0,128,128),new Rectangle(0,0,128,128),GraphicsUnit.Pixel);
+      climb.Dispose(); idle.Dispose();
+      result.Save(climbPath,ImageFormat.Png);
     }
   }
   public static void SaveFrames(Bitmap[] frames,string target){
@@ -284,16 +305,19 @@ foreach ($pose in @($native)+@($combos)+@($derived.Keys)) {
   if($pose -notin $combos){for($frame=0;$frame -lt $shiftX.Length;$frame++){
     $minX=128;$maxX=-1;$minY=128;$maxY=-1
     for($y=0;$y -lt 128;$y++){for($x=0;$x -lt 128;$x++){if($base.GetPixel($frame*128+$x,$y).A -gt 0){$minX=[Math]::Min($minX,$x);$maxX=[Math]::Max($maxX,$x);$minY=[Math]::Min($minY,$y);$maxY=[Math]::Max($maxY,$y)}}}
-    $scaledMinX=60+($minX-60)*1.5;$scaledMaxX=60+($maxX-60)*1.5
-    $scaledMinY=80+($minY-80)*1.5;$scaledMaxY=80+($maxY-80)*1.5
+    $scaledMinX=60+($minX-60)*1.2;$scaledMaxX=60+($maxX-60)*1.2
+    $scaledMinY=80+($minY-80)*1.2;$scaledMaxY=80+($maxY-80)*1.2
     if($scaledMinX -lt 2){$shiftX[$frame]=[int][Math]::Ceiling(2-$scaledMinX)}elseif($scaledMaxX -gt 125){$shiftX[$frame]=[int][Math]::Floor(125-$scaledMaxX)}
     if($scaledMinY -lt 2){$shiftY[$frame]=[int][Math]::Ceiling(2-$scaledMinY)}elseif($scaledMaxY -gt 125){$shiftY[$frame]=[int][Math]::Floor(125-$scaledMaxY)}
   }}
   $base.Dispose();$poseShiftX[$pose]=$shiftX;$poseShiftY[$pose]=$shiftY
   foreach($suffix in $suffixes){[ChickenTemplateArt]::EnlargeSheet((Join-Path $target "$pose$suffix.png"),($pose -in $combos),$shiftX,$shiftY)}
 }
-foreach($pose in $anchors.Keys){for($index=0;$index -lt $anchors[$pose].Count;$index++){foreach($key in @('gun','up','diag')){$point=$anchors[$pose][$index].$key;$point[0]=[int][Math]::Round(60+($point[0]-60)*1.5+$poseShiftX[$pose][$index]);$point[1]=[int][Math]::Round(80+($point[1]-80)*1.5+$poseShiftY[$pose][$index])}}}
+foreach($pose in $anchors.Keys){for($index=0;$index -lt $anchors[$pose].Count;$index++){foreach($key in @('gun','up','diag')){$point=$anchors[$pose][$index].$key;$point[0]=[int][Math]::Round(60+($point[0]-60)*1.2+$poseShiftX[$pose][$index]);$point[1]=[int][Math]::Round(80+($point[1]-80)*1.2+$poseShiftY[$pose][$index])}}}
+$anchors['ledge_climb'] = @($anchors['ledge_climb'][0..2]) + @($anchors['idle'][0])
+foreach($suffix in @('','-gun','-up','-diag')){[ChickenTemplateArt]::FinishClimb((Join-Path $target "ledge_climb$suffix.png"),(Join-Path $target "idle$suffix.png"))}
 $anchors | ConvertTo-Json -Depth 10 -Compress | Set-Content -LiteralPath (Join-Path $target 'anchors.json') -Encoding utf8
+[ChickenTemplateArt]::CreateCorpse((Join-Path $target 'ragdoll.png'),(Join-Path $target 'corpse.png'))
 $manual = Join-Path $root 'art/template-edits/hero'
 if (Test-Path $manual) {
   Get-ChildItem -LiteralPath $manual -File -Recurse | ForEach-Object {

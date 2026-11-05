@@ -6,7 +6,7 @@ import { networkInterfaces } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { Server } from 'socket.io';
-import { makeActor, newGame, startRound, tick, HATS, NO_INPUT, type GameState, type Input } from '../shared/game';
+import { makeActor, newGame, startRound, tick, HATS, NO_INPUT, setWeaponAnchors, type GameState, type Input } from '../shared/game';
 import { botInput } from './bot';
 
 interface Room { code: string; state: GameState; serverTick:number; host: string; sockets: Map<string, string>; tokens: Map<string, string>; inputs: Record<string, Input>; inputSeq: Record<string, number>; inputAck: Record<string, number>; emptySince: number }
@@ -67,6 +67,7 @@ app.put('/api/studio/anchors', localStudio, express.json({ limit: '1mb' }), asyn
     for (const target of [path.join(assetRoot, 'hero/anchors.json'), path.join(dist, 'assets/hero/anchors.json'), path.resolve(here, '../art/template-edits/hero/anchors.json')]) {
       await mkdir(path.dirname(target), { recursive: true }); await writeFile(target, data);
     }
+    setWeaponAnchors(incoming as Parameters<typeof setWeaponAnchors>[0]);
     res.json({ ok: true });
   } catch (cause) { res.status(500).json({ error: String(cause) }); }
 });

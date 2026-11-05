@@ -115,7 +115,7 @@
       ]
     },
     "ledge_climb": {
-      "frames": 11,
+      "frames": 4,
       "fps": 18,
       "loop": false,
       "runtime": true,
@@ -244,6 +244,15 @@
         "-gun",
         "-up",
         "-diag"
+      ]
+    },
+    "corpse": {
+      "frames": 1,
+      "fps": 8,
+      "loop": false,
+      "runtime": true,
+      "variants": [
+        ""
       ]
     },
     "combo_1": {
