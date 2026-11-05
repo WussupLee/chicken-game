@@ -7,7 +7,7 @@
     "frameWidth": 128,
     "frameHeight": 128,
     "frames": 10,
-    "fps": 7,
+    "fps": 8,
     "runtime": true
   },
   {
@@ -18,7 +18,7 @@
     "frameWidth": 128,
     "frameHeight": 128,
     "frames": 10,
-    "fps": 7,
+    "fps": 8,
     "runtime": true
   },
   {
@@ -29,7 +29,7 @@
     "frameWidth": 128,
     "frameHeight": 128,
     "frames": 10,
-    "fps": 7,
+    "fps": 8,
     "runtime": true
   },
   {
@@ -40,7 +40,7 @@
     "frameWidth": 128,
     "frameHeight": 128,
     "frames": 10,
-    "fps": 7,
+    "fps": 8,
     "runtime": true
   },
   {
@@ -51,7 +51,7 @@
     "frameWidth": 128,
     "frameHeight": 128,
     "frames": 10,
-    "fps": 10,
+    "fps": 16,
     "runtime": true
   },
   {
@@ -62,7 +62,7 @@
     "frameWidth": 128,
     "frameHeight": 128,
     "frames": 10,
-    "fps": 10,
+    "fps": 16,
     "runtime": true
   },
   {
@@ -73,7 +73,7 @@
     "frameWidth": 128,
     "frameHeight": 128,
     "frames": 10,
-    "fps": 10,
+    "fps": 16,
     "runtime": true
   },
   {
@@ -84,7 +84,7 @@
     "frameWidth": 128,
     "frameHeight": 128,
     "frames": 10,
-    "fps": 10,
+    "fps": 16,
     "runtime": true
   },
   {
@@ -95,7 +95,7 @@
     "frameWidth": 128,
     "frameHeight": 128,
     "frames": 10,
-    "fps": 14,
+    "fps": 20,
     "runtime": true
   },
   {
@@ -106,7 +106,7 @@
     "frameWidth": 128,
     "frameHeight": 128,
     "frames": 10,
-    "fps": 14,
+    "fps": 20,
     "runtime": true
   },
   {
@@ -117,7 +117,7 @@
     "frameWidth": 128,
     "frameHeight": 128,
     "frames": 10,
-    "fps": 14,
+    "fps": 20,
     "runtime": true
   },
   {
@@ -128,7 +128,7 @@
     "frameWidth": 128,
     "frameHeight": 128,
     "frames": 10,
-    "fps": 14,
+    "fps": 20,
     "runtime": true
   },
   {
@@ -139,7 +139,7 @@
     "frameWidth": 128,
     "frameHeight": 128,
     "frames": 6,
-    "fps": 12,
+    "fps": 16,
     "runtime": true
   },
   {
@@ -150,7 +150,7 @@
     "frameWidth": 128,
     "frameHeight": 128,
     "frames": 6,
-    "fps": 12,
+    "fps": 16,
     "runtime": true
   },
   {
@@ -161,7 +161,7 @@
     "frameWidth": 128,
     "frameHeight": 128,
     "frames": 6,
-    "fps": 12,
+    "fps": 16,
     "runtime": true
   },
   {
@@ -172,7 +172,7 @@
     "frameWidth": 128,
     "frameHeight": 128,
     "frames": 6,
-    "fps": 12,
+    "fps": 16,
     "runtime": true
   },
   {
@@ -183,7 +183,7 @@
     "frameWidth": 128,
     "frameHeight": 128,
     "frames": 4,
-    "fps": 12,
+    "fps": 16,
     "runtime": true
   },
   {
@@ -194,7 +194,7 @@
     "frameWidth": 128,
     "frameHeight": 128,
     "frames": 4,
-    "fps": 12,
+    "fps": 16,
     "runtime": true
   },
   {
@@ -205,7 +205,7 @@
     "frameWidth": 128,
     "frameHeight": 128,
     "frames": 4,
-    "fps": 12,
+    "fps": 16,
     "runtime": true
   },
   {
@@ -216,7 +216,7 @@
     "frameWidth": 128,
     "frameHeight": 128,
     "frames": 4,
-    "fps": 12,
+    "fps": 16,
     "runtime": true
   },
   {
@@ -227,7 +227,7 @@
     "frameWidth": 128,
     "frameHeight": 128,
     "frames": 3,
-    "fps": 9,
+    "fps": 12,
     "runtime": true
   },
   {
@@ -238,7 +238,7 @@
     "frameWidth": 128,
     "frameHeight": 128,
     "frames": 3,
-    "fps": 9,
+    "fps": 12,
     "runtime": true
   },
   {
@@ -249,7 +249,7 @@
     "frameWidth": 128,
     "frameHeight": 128,
     "frames": 3,
-    "fps": 9,
+    "fps": 12,
     "runtime": true
   },
   {
@@ -260,7 +260,7 @@
     "frameWidth": 128,
     "frameHeight": 128,
     "frames": 3,
-    "fps": 9,
+    "fps": 12,
     "runtime": true
   },
   {
@@ -271,7 +271,7 @@
     "frameWidth": 128,
     "frameHeight": 128,
     "frames": 8,
-    "fps": 14,
+    "fps": 18,
     "runtime": true
   },
   {
@@ -282,7 +282,7 @@
     "frameWidth": 128,
     "frameHeight": 128,
     "frames": 8,
-    "fps": 14,
+    "fps": 18,
     "runtime": true
   },
   {
@@ -293,7 +293,7 @@
     "frameWidth": 128,
     "frameHeight": 128,
     "frames": 8,
-    "fps": 14,
+    "fps": 18,
     "runtime": true
   },
   {
@@ -304,7 +304,7 @@
     "frameWidth": 128,
     "frameHeight": 128,
     "frames": 8,
-    "fps": 14,
+    "fps": 18,
     "runtime": true
   },
   {
@@ -315,7 +315,7 @@
     "frameWidth": 128,
     "frameHeight": 128,
     "frames": 4,
-    "fps": 10,
+    "fps": 12,
     "runtime": true
   },
   {
@@ -326,7 +326,7 @@
     "frameWidth": 128,
     "frameHeight": 128,
     "frames": 4,
-    "fps": 10,
+    "fps": 12,
     "runtime": true
   },
   {
@@ -337,7 +337,7 @@
     "frameWidth": 128,
     "frameHeight": 128,
     "frames": 4,
-    "fps": 10,
+    "fps": 12,
     "runtime": true
   },
   {
@@ -348,7 +348,7 @@
     "frameWidth": 128,
     "frameHeight": 128,
     "frames": 4,
-    "fps": 10,
+    "fps": 12,
     "runtime": true
   },
   {
@@ -403,7 +403,7 @@
     "frameWidth": 128,
     "frameHeight": 128,
     "frames": 11,
-    "fps": 16,
+    "fps": 18,
     "runtime": true
   },
   {
@@ -414,7 +414,7 @@
     "frameWidth": 128,
     "frameHeight": 128,
     "frames": 11,
-    "fps": 16,
+    "fps": 18,
     "runtime": true
   },
   {
@@ -425,7 +425,7 @@
     "frameWidth": 128,
     "frameHeight": 128,
     "frames": 11,
-    "fps": 16,
+    "fps": 18,
     "runtime": true
   },
   {
@@ -436,7 +436,7 @@
     "frameWidth": 128,
     "frameHeight": 128,
     "frames": 11,
-    "fps": 16,
+    "fps": 18,
     "runtime": true
   },
   {
@@ -447,7 +447,7 @@
     "frameWidth": 128,
     "frameHeight": 128,
     "frames": 4,
-    "fps": 14,
+    "fps": 20,
     "runtime": true
   },
   {
@@ -458,7 +458,7 @@
     "frameWidth": 128,
     "frameHeight": 128,
     "frames": 4,
-    "fps": 14,
+    "fps": 20,
     "runtime": true
   },
   {
@@ -469,7 +469,7 @@
     "frameWidth": 128,
     "frameHeight": 128,
     "frames": 4,
-    "fps": 14,
+    "fps": 20,
     "runtime": true
   },
   {
@@ -480,7 +480,7 @@
     "frameWidth": 128,
     "frameHeight": 128,
     "frames": 4,
-    "fps": 14,
+    "fps": 20,
     "runtime": true
   },
   {
@@ -491,7 +491,7 @@
     "frameWidth": 128,
     "frameHeight": 128,
     "frames": 4,
-    "fps": 14,
+    "fps": 20,
     "runtime": true
   },
   {
@@ -502,7 +502,7 @@
     "frameWidth": 128,
     "frameHeight": 128,
     "frames": 4,
-    "fps": 14,
+    "fps": 20,
     "runtime": true
   },
   {
@@ -513,7 +513,7 @@
     "frameWidth": 128,
     "frameHeight": 128,
     "frames": 4,
-    "fps": 14,
+    "fps": 20,
     "runtime": true
   },
   {
@@ -524,7 +524,7 @@
     "frameWidth": 128,
     "frameHeight": 128,
     "frames": 4,
-    "fps": 14,
+    "fps": 20,
     "runtime": true
   },
   {
@@ -535,7 +535,7 @@
     "frameWidth": 128,
     "frameHeight": 128,
     "frames": 4,
-    "fps": 14,
+    "fps": 20,
     "runtime": true
   },
   {
@@ -546,7 +546,7 @@
     "frameWidth": 128,
     "frameHeight": 128,
     "frames": 4,
-    "fps": 14,
+    "fps": 20,
     "runtime": true
   },
   {
@@ -557,7 +557,7 @@
     "frameWidth": 128,
     "frameHeight": 128,
     "frames": 4,
-    "fps": 14,
+    "fps": 20,
     "runtime": true
   },
   {
@@ -568,7 +568,7 @@
     "frameWidth": 128,
     "frameHeight": 128,
     "frames": 4,
-    "fps": 14,
+    "fps": 20,
     "runtime": true
   },
   {
@@ -579,7 +579,7 @@
     "frameWidth": 128,
     "frameHeight": 128,
     "frames": 7,
-    "fps": 14,
+    "fps": 24,
     "runtime": true
   },
   {
@@ -590,7 +590,7 @@
     "frameWidth": 128,
     "frameHeight": 128,
     "frames": 7,
-    "fps": 14,
+    "fps": 24,
     "runtime": true
   },
   {
@@ -601,7 +601,7 @@
     "frameWidth": 128,
     "frameHeight": 128,
     "frames": 7,
-    "fps": 14,
+    "fps": 24,
     "runtime": true
   },
   {
@@ -612,7 +612,7 @@
     "frameWidth": 128,
     "frameHeight": 128,
     "frames": 7,
-    "fps": 14,
+    "fps": 24,
     "runtime": true
   },
   {
@@ -623,7 +623,7 @@
     "frameWidth": 128,
     "frameHeight": 128,
     "frames": 4,
-    "fps": 14,
+    "fps": 18,
     "runtime": true
   },
   {
@@ -634,7 +634,7 @@
     "frameWidth": 128,
     "frameHeight": 128,
     "frames": 4,
-    "fps": 14,
+    "fps": 18,
     "runtime": true
   },
   {
@@ -645,7 +645,7 @@
     "frameWidth": 128,
     "frameHeight": 128,
     "frames": 4,
-    "fps": 14,
+    "fps": 18,
     "runtime": true
   },
   {
@@ -656,7 +656,7 @@
     "frameWidth": 128,
     "frameHeight": 128,
     "frames": 4,
-    "fps": 14,
+    "fps": 18,
     "runtime": true
   },
   {
@@ -711,7 +711,7 @@
     "frameWidth": 128,
     "frameHeight": 128,
     "frames": 3,
-    "fps": 9,
+    "fps": 12,
     "runtime": true
   },
   {
@@ -722,7 +722,7 @@
     "frameWidth": 128,
     "frameHeight": 128,
     "frames": 3,
-    "fps": 9,
+    "fps": 12,
     "runtime": true
   },
   {
@@ -733,7 +733,7 @@
     "frameWidth": 128,
     "frameHeight": 128,
     "frames": 3,
-    "fps": 9,
+    "fps": 12,
     "runtime": true
   },
   {
@@ -744,7 +744,7 @@
     "frameWidth": 128,
     "frameHeight": 128,
     "frames": 3,
-    "fps": 9,
+    "fps": 12,
     "runtime": true
   },
   {
@@ -755,7 +755,7 @@
     "frameWidth": 128,
     "frameHeight": 128,
     "frames": 4,
-    "fps": 14,
+    "fps": 16,
     "runtime": true
   },
   {
@@ -766,7 +766,7 @@
     "frameWidth": 128,
     "frameHeight": 128,
     "frames": 4,
-    "fps": 14,
+    "fps": 16,
     "runtime": true
   },
   {
@@ -777,7 +777,7 @@
     "frameWidth": 128,
     "frameHeight": 128,
     "frames": 4,
-    "fps": 14,
+    "fps": 16,
     "runtime": true
   },
   {
@@ -788,7 +788,7 @@
     "frameWidth": 128,
     "frameHeight": 128,
     "frames": 4,
-    "fps": 14,
+    "fps": 16,
     "runtime": true
   },
   {
@@ -799,7 +799,7 @@
     "frameWidth": 128,
     "frameHeight": 128,
     "frames": 2,
-    "fps": 7,
+    "fps": 8,
     "runtime": true
   },
   {
@@ -810,7 +810,7 @@
     "frameWidth": 128,
     "frameHeight": 128,
     "frames": 2,
-    "fps": 7,
+    "fps": 8,
     "runtime": true
   },
   {
@@ -821,7 +821,7 @@
     "frameWidth": 128,
     "frameHeight": 128,
     "frames": 2,
-    "fps": 7,
+    "fps": 8,
     "runtime": true
   },
   {
@@ -832,7 +832,7 @@
     "frameWidth": 128,
     "frameHeight": 128,
     "frames": 2,
-    "fps": 7,
+    "fps": 8,
     "runtime": true
   },
   {

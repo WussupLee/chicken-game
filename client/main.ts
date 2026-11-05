@@ -4,7 +4,7 @@ import { ARENAS, COLORS, HEIGHT, NO_INPUT, predictActorMovement, SWORD_COMBO, WI
 import HERO_MANIFEST from './public/assets/hero/manifest.json';
 import './style.css';
 
-type ViewState = GameState & { code: string; host: string; inputAck?: Record<string, number> };
+type ViewState = GameState & { code: string; host: string; serverTick:number; inputAck?: Record<string, number> };
 type Ack = { ok: boolean; code?: string; id?: string; token?: string; error?: string };
 type InstallPrompt = Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: string }> };
 const app = document.querySelector<HTMLDivElement>('#app')!;
@@ -24,8 +24,8 @@ let bindings: Record<keyof Input, string> = Object.fromEntries((Object.keys(defa
 let rebinding: keyof Input | null = null;
 let audio: AudioContext | null = null;
 let previousPhase = '';
-let snapshotAt = performance.now();
-let priorPositions = new Map<string,{x:number;y:number}>();
+const snapshots:{tick:number;received:number;positions:Map<string,{x:number;y:number}>}[]=[];
+let predictedAt=performance.now();
 let inputSequence=0;
 let pendingInputs:{seq:number;input:Input}[]=[];
 let predictedActor:Actor|null=null;
@@ -172,18 +172,23 @@ function heroFrame(a: Actor, pose: HeroPose, elapsedMs: number): number {
 }
 
 class ArenaScene extends Phaser.Scene {
+  background!: Phaser.GameObjects.Graphics;
+  renderedArena=-1;
   graphics!: Phaser.GameObjects.Graphics;
   foreground!: Phaser.GameObjects.Graphics;
   chickens = new Map<string, Phaser.GameObjects.Image>();
   animationStart = new Map<string, {pose: HeroPose; at: number}>();
-  motion = new Map<string, {facing:number;vx:number;grounded:boolean;wallSlide:boolean;transition?:HeroPose;at?:number}>();
+  motion = new Map<string, {facing:number;vx:number;grounded:boolean;wallSlide:boolean;mode:HeroPose;transition?:HeroPose;at?:number}>();
   weaponSprites = new Map<string, Phaser.GameObjects.Image>();
   tiles = new Map<string, Phaser.GameObjects.TileSprite>();
   tileTextures = new Map<string, string>();
   seenEffects = new Set<number>();
   constructor(){super('arena');}
   visualPose(a:Actor,time:number):HeroPose {
-    const base=heroPose(a),before=this.motion.get(a.id);
+    let base=heroPose(a);const before=this.motion.get(a.id);
+    if(base==='run'&&before?.mode==='walk'&&Math.abs(a.vx)<4.2)base='walk';
+    if(base==='walk'&&before?.mode==='run'&&Math.abs(a.vx)>2.8)base='run';
+    if(base==='walk'&&before?.mode==='idle'&&Math.abs(a.vx)<1.2)base='idle';
     let transition=before?.transition,at=before?.at;
     if(before && ['idle','walk','run','jump','fall','fall_loop'].includes(base)){
       if(before.wallSlide&&!a.wallSlide&&a.vy<0)transition='wall_jump';
@@ -192,7 +197,7 @@ class ArenaScene extends Phaser.Scene {
       if(transition!==before.transition){at=time;this.animationStart.delete(a.id);}
     }else transition=undefined;
     if(transition){const config=HERO_MANIFEST.poses[transition],compatible=transition==='wall_jump'?!a.grounded:a.grounded;if(!compatible||time-(at??time)>=config.frames/(heroTiming[transition]||config.fps)*1000)transition=undefined;}
-    this.motion.set(a.id,{facing:a.facing,vx:a.vx,grounded:a.grounded,wallSlide:a.wallSlide,transition,at});
+    this.motion.set(a.id,{facing:a.facing,vx:a.vx,grounded:a.grounded,wallSlide:a.wallSlide,mode:base,transition,at});
     return transition??base;
   }
   preload(){
@@ -211,13 +216,14 @@ class ArenaScene extends Phaser.Scene {
   create(){
     const liveManifest=this.cache.json.get('hero-manifest') as {poses:Record<string,{fps:number}>}|undefined;
     heroTiming=Object.fromEntries(Object.entries(liveManifest?.poses||{}).map(([pose,config])=>[pose,config.fps]));
-    this.graphics=this.add.graphics(); this.foreground=this.add.graphics().setDepth(10); this.cameras.main.setBackgroundColor('#263c53');
+    this.background=this.add.graphics();this.graphics=this.add.graphics(); this.foreground=this.add.graphics().setDepth(10); this.cameras.main.setBackgroundColor('#263c53');
   }
-  update(time:number){ if(!state) return; const s=state; const ar=ARENAS[s.arenaIndex]; const g=this.graphics; const f=this.foreground; g.clear(); f.clear();
+  update(time:number,delta:number){ if(!state) return; const s=state; const ar=ARENAS[s.arenaIndex]; const g=this.graphics; const f=this.foreground; g.clear(); f.clear();
     const camera=this.cameras.main, viewWidth=camera.width;
     const mine=s.actors.find(a=>a.id===myId);
     if(mine&&!mine.alive&&spectateTarget==='wide'){camera.setZoom(viewWidth/WIDTH);camera.centerOn(WIDTH/2,HEIGHT/2);}
     else {camera.setZoom(1);const watched=mine&&!mine.alive?s.actors.find(a=>a.id===spectateTarget):mine;if(watched&&viewWidth<WIDTH){const projected=watched.id===myId&&predictedActor?predictedActor.x+correctionX:watched.x;const target=Math.max(0,Math.min(WIDTH-viewWidth,projected-viewWidth/2));const current=camera.scrollX;camera.scrollX=Math.abs(target-current)>220?target:current+(target-current)*0.22;}camera.scrollY=0;}
+    if(this.renderedArena!==s.arenaIndex){this.renderedArena=s.arenaIndex;const g=this.background;g.clear();
     if(ar.theme==='forest'){
       g.fillGradientStyle(0x8bc9df,0x8bc9df,0x467f9c,0x467f9c);g.fillRect(0,0,WIDTH,HEIGHT);
       g.fillStyle(0xffeab0,0.35);g.fillCircle(835,72,52);
@@ -242,6 +248,7 @@ class ArenaScene extends Phaser.Scene {
       if(ar.theme==='industrial'){g.fillStyle(0x233743);for(let x=b.x+8;x<b.x+b.w-5;x+=24)g.fillTriangle(x,b.y+1,x+12,b.y+1,x+7,b.y+5);}
       if(ar.theme==='space'){g.lineStyle(2,0x8bd5df,0.55);g.strokeRect(b.x+1,b.y+1,b.w-2,Math.min(b.h-2,13));}
       if(ar.theme==='forest'&&b.h>=40){g.fillStyle(0x416a4c,0.6);g.fillRect(b.x,b.y+6,b.w,5);}
+    }
     }
     for(const b of s.cover){
       const damaged=b.hp<b.maxHp;
@@ -280,12 +287,15 @@ class ArenaScene extends Phaser.Scene {
     for(const p of s.shots){if(p.kind==='grenade'){const id=`grenade-${p.id}`;activeWeaponSprites.add(id);this.placeWeapon(id,'weapon-grenade',p.x,p.y,1,0.7);}else{g.fillStyle(0xff8d50,0.28);g.fillCircle(p.x,p.y,8);g.fillStyle(0xffeab1);g.fillCircle(p.x,p.y,3);}}
     for(const e of s.effects){if(!this.seenEffects.has(e.id)){this.seenEffects.add(e.id);if(this.seenEffects.size>2000)this.seenEffects.clear();if(e.type==='blast')this.cameras.main.shake(170,0.008);else if(e.type==='shot'||e.type==='hit')this.cameras.main.shake(45,0.001);if(e.type==='empty')sting([160]);else if(e.type==='blast')sting([90,65]);else if(e.type==='shot')sting([260]);else if(e.type==='pin')pinSound();}if(e.type==='pin'){const travel=20-e.ttl;g.lineStyle(2,0xe8e5d4,Math.min(1,e.ttl/8));g.strokeCircle(e.x+travel*1.4,e.y-travel*0.7,4);g.lineBetween(e.x+travel*1.4+4,e.y-travel*0.7,e.x+travel*1.4+7,e.y-travel*0.7+2);continue;}g.fillStyle(e.type==='blast'?0xffba53:e.type==='shot'?0xffe7a3:0xd6bd91,Math.min(0.7,e.ttl/20));const r=e.type==='blast'?(24-e.ttl)*3:e.type==='shot'?5:3;g.fillCircle(e.x,e.y,r);if(e.type==='blast'||e.type==='dust')for(let i=0;i<8;i++){const angle=i*Math.PI/4+e.id%9;const d=(e.type==='blast'?24-e.ttl:8-e.ttl)*2;g.fillCircle(e.x+Math.cos(angle)*d,e.y+Math.sin(angle)*d,2);}}
     for (const a of s.actors) {
-      const elapsed=Math.min(3,(performance.now()-snapshotAt)/(1000/60));
-      const previous=priorPositions.get(a.id);
-      let px=a.id===myId&&predictedActor?predictedActor.x+correctionX:previous?previous.x+(a.x-previous.x)*Math.min(1,elapsed/3):a.x;
-      let py=a.id===myId&&predictedActor?predictedActor.y+correctionY:previous?previous.y+(a.y-previous.y)*Math.min(1,elapsed/3):a.y;
+      const latest=snapshots.at(-1),renderTick=latest?latest.tick-6+Math.min(3,(performance.now()-latest.received)/(1000/60)):0;
+      const next=snapshots.find(frame=>frame.tick>=renderTick),previous=[...snapshots].reverse().find(frame=>frame.tick<=renderTick);
+      const from=previous?.positions.get(a.id),to=next?.positions.get(a.id);
+      const blend=previous&&next&&next.tick>previous.tick?Math.max(0,Math.min(1,(renderTick-previous.tick)/(next.tick-previous.tick))):1;
+      const local=a.id===myId&&predictedActor,subTick=Math.max(0,Math.min(1,(performance.now()-predictedAt)/(1000/60)));
+      let px=local?predictedActor!.x+predictedActor!.vx*subTick+correctionX:from&&to?from.x+(to.x-from.x)*blend:from?.x??to?.x??a.x;
+      let py=local?predictedActor!.y+predictedActor!.vy*subTick+correctionY:from&&to?from.y+(to.y-from.y)*blend:from?.y??to?.y??a.y;
       if(a.id===myId&&predictedActor&&[...ar.blocks,...s.cover].some(b=>px+11>b.x&&px-11<b.x+b.w&&py>b.y&&py-27<b.y+b.h)){px=predictedActor.x;py=predictedActor.y;correctionX=0;correctionY=0;}
-      if(a.id===myId){correctionX*=0.72;correctionY*=0.72;if(Math.abs(correctionX)<0.1)correctionX=0;if(Math.abs(correctionY)<0.1)correctionY=0;}
+      if(a.id===myId){const decay=Math.exp(-Math.min(delta,50)/70);correctionX*=decay;correctionY*=decay;if(Math.abs(correctionX)<0.1)correctionX=0;if(Math.abs(correctionY)<0.1)correctionY=0;}
       const pose=this.visualPose(a.id===myId&&predictedActor?predictedActor:a,time);
       let animation=this.animationStart.get(a.id);
       if (!animation || animation.pose!==pose) {animation={pose,at:time};this.animationStart.set(a.id,animation);}
@@ -310,7 +320,7 @@ class ArenaScene extends Phaser.Scene {
           if (!a.swingTicks) {activeWeaponSprites.add(id);this.placeWeapon(id,'weapon-sword',handX,handY,a.aimUp&&!a.aimDiagonal?1:facing,0.9,rotation);}
         } else {
           activeWeaponSprites.add(id);
-          this.placeWeapon(id,'weapon-'+a.weapon,handX,handY,a.aimUp&&!a.aimDiagonal?1:facing,a.weapon==='pistol'?0.64:0.52,rotation);
+          this.placeWeapon(id,'weapon-'+a.weapon,handX,handY,a.aimUp&&!a.aimDiagonal?1:facing,a.weapon==='pistol'?0.45:0.38,rotation);
         }
       }
       if (a.cluck) {f.fillStyle(0xffefc0);f.fillCircle(px+facing*24,py-29,5);}
@@ -362,8 +372,8 @@ function collectInput():Input {
   if(gp){const b=(n:number)=>!!gp.buttons[n]?.pressed;out.left ||= gp.axes[0]<-.3||b(14);out.right ||= gp.axes[0]>.3||b(15);out.up ||= gp.axes[1]<-.5||b(12);out.down ||= gp.axes[1]>.5||b(13);out.jump ||= b(0);out.fire ||= b(1);out.grab ||= b(2);out.cluck ||= b(4);out.ragdoll ||= b(5);}
   return out;
 }
-setInterval(()=>{if(myId&&state?.phase==='round'){const input=collectInput();const mine=state.actors.find(a=>a.id===myId);if(mine&&!mine.alive){if(input.jump&&!spectateJumpHeld)cycleSpectate();spectateJumpHeld=input.jump;}else spectateJumpHeld=false;const seq=++inputSequence;pendingInputs.push({seq,input});if(pendingInputs.length>18)pendingInputs.shift();if(predictedActor&&mine?.alive)predictActorMovement(predictedActor,input,ARENAS[state.arenaIndex],state.cover);socket.emit('input',{seq,controls:input});}},1000/60);
-socket.on('state',(s:ViewState)=>{if(code&&s.code!==code)return;if(state?.round!==s.round){pendingInputs=[];predictedActor=null;correctionX=0;correctionY=0;}priorPositions=new Map(state?.actors.map(a=>[a.id,{x:a.x,y:a.y}])||[]);snapshotAt=performance.now();if(previousPhase!==s.phase){if(s.phase==='round')sting([330,440,660]);else if(s.phase==='winner')sting([523,659,784,1047]);else if(s.phase==='intermission')sting([392,330,392]);else if(s.phase==='presenter')sting([440,330]);previousPhase=s.phase;}state=s;const mine=s.actors.find(a=>a.id===myId);if(s.phase==='round'&&mine?.alive){const old=predictedActor;const shownX=old?old.x+correctionX:mine.x,shownY=old?old.y+correctionY:mine.y;pendingInputs=pendingInputs.filter(frame=>frame.seq>(s.inputAck?.[myId]??inputSequence));const replay=structuredClone(mine);for(const frame of pendingInputs)predictActorMovement(replay,frame.input,ARENAS[s.arenaIndex],s.cover);predictedActor=replay;correctionX=Math.abs(shownX-replay.x)<30?shownX-replay.x:0;correctionY=Math.abs(shownY-replay.y)<30?shownY-replay.y:0;}else predictedActor=null;syncSpectate();if(s.phase==='lobby'&&screen==='game'){screen='lobby';game?.destroy(true);game=null;lastLobbyKey='';lastOverlayKey='';} if(screen==='lobby'&&s.phase!=='lobby'){screen='game';lastOverlayKey='';} if(screen==='lobby'&&s.phase==='lobby'){const key=JSON.stringify([s.host,s.actors.map(a=>[a.id,a.name,a.slot,a.bot,a.hat])]);if(key===lastLobbyKey)return;lastLobbyKey=key;} render();});
+setInterval(()=>{if(myId&&state?.phase==='round'){const input=collectInput();const mine=state.actors.find(a=>a.id===myId);if(mine&&!mine.alive){if(input.jump&&!spectateJumpHeld)cycleSpectate();spectateJumpHeld=input.jump;}else spectateJumpHeld=false;const seq=++inputSequence;pendingInputs.push({seq,input});if(pendingInputs.length>18)pendingInputs.shift();if(predictedActor&&mine?.alive){predictActorMovement(predictedActor,input,ARENAS[state.arenaIndex],state.cover);predictedAt=performance.now();}socket.emit('input',{seq,controls:input});}},1000/60);
+socket.on('state',(s:ViewState)=>{if(code&&s.code!==code)return;if(state?.round!==s.round){pendingInputs=[];predictedActor=null;correctionX=0;correctionY=0;}if(state?.round!==s.round)snapshots.length=0;if(!snapshots.length||snapshots.at(-1)!.tick!==s.serverTick){snapshots.push({tick:s.serverTick,received:performance.now(),positions:new Map(s.actors.map(a=>[a.id,{x:a.x,y:a.y}]))});if(snapshots.length>12)snapshots.shift();}if(previousPhase!==s.phase){if(s.phase==='round')sting([330,440,660]);else if(s.phase==='winner')sting([523,659,784,1047]);else if(s.phase==='intermission')sting([392,330,392]);else if(s.phase==='presenter')sting([440,330]);previousPhase=s.phase;}state=s;const mine=s.actors.find(a=>a.id===myId);if(s.phase==='round'&&mine?.alive){const old=predictedActor;const shownX=old?old.x+correctionX:mine.x,shownY=old?old.y+correctionY:mine.y;pendingInputs=pendingInputs.filter(frame=>frame.seq>(s.inputAck?.[myId]??inputSequence));const replay=structuredClone(mine);for(const frame of pendingInputs)predictActorMovement(replay,frame.input,ARENAS[s.arenaIndex],s.cover);predictedActor=replay;correctionX=Math.abs(shownX-replay.x)<30?shownX-replay.x:0;correctionY=Math.abs(shownY-replay.y)<30?shownY-replay.y:0;}else predictedActor=null;syncSpectate();if(s.phase==='lobby'&&screen==='game'){screen='lobby';game?.destroy(true);game=null;lastLobbyKey='';lastOverlayKey='';} if(screen==='lobby'&&s.phase!=='lobby'){screen='game';lastOverlayKey='';} if(screen==='lobby'&&s.phase==='lobby'){const key=JSON.stringify([s.host,s.actors.map(a=>[a.id,a.name,a.slot,a.bot,a.hat])]);if(key===lastLobbyKey)return;lastLobbyKey=key;} render();});
 socket.on('connect',()=>{if(error==='Connection lost. Reconnecting…'){error='';if(screen!=='game')render();}const c=new URLSearchParams(location.search).get('room');if(c)join(c);});
 socket.on('disconnect',()=>{error='Connection lost. Reconnecting…'; if(screen!=='game')render();});
 screen=new URLSearchParams(location.search).has('room')?'join':'menu'; render();

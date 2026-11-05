@@ -9,7 +9,7 @@ import { Server } from 'socket.io';
 import { makeActor, newGame, startRound, tick, HATS, NO_INPUT, type GameState, type Input } from '../shared/game';
 import { botInput } from './bot';
 
-interface Room { code: string; state: GameState; host: string; sockets: Map<string, string>; tokens: Map<string, string>; inputs: Record<string, Input>; inputSeq: Record<string, number>; inputAck: Record<string, number>; emptySince: number }
+interface Room { code: string; state: GameState; serverTick:number; host: string; sockets: Map<string, string>; tokens: Map<string, string>; inputs: Record<string, Input>; inputSeq: Record<string, number>; inputAck: Record<string, number>; emptySince: number }
 const rooms = new Map<string, Room>();
 const app = express();
 const server = createServer(app);
@@ -112,7 +112,7 @@ app.use(express.static(dist));
 app.get('/{*path}', (_req, res) => res.sendFile(path.join(dist, 'index.html')));
 
 function code(): string { let c = ''; do { c = randomBytes(3).toString('hex').toUpperCase(); } while (rooms.has(c)); return c; }
-function emitRoom(room: Room): void { io.to(room.code).emit('state', { ...room.state, code: room.code, host: room.host, inputAck: room.inputAck }); }
+function emitRoom(room: Room): void { io.to(room.code).emit('state', { ...room.state, code: room.code, host: room.host, inputAck: room.inputAck, serverTick:room.serverTick }); }
 function respond(cb: unknown, data: unknown): void { if (typeof cb === 'function') cb(data); }
 function addHuman(room: Room, socketId: string, name: string, token: string): string | null {
   const existing = room.tokens.get(token);
@@ -129,7 +129,7 @@ function safeInput(raw: Partial<Input>): Input { const out = { ...NO_INPUT }; fo
 
 io.on('connection', socket => {
   socket.on('create', (payload: { name?: string; token?: string }, cb: unknown) => {
-    const c = code(); const state = newGame(); const room: Room = { code: c, state, host: '', sockets: new Map(), tokens: new Map(), inputs: {}, inputSeq: {}, inputAck: {}, emptySince: 0 };
+    const c = code(); const state = newGame(); const room: Room = { code: c, state, serverTick:0, host: '', sockets: new Map(), tokens: new Map(), inputs: {}, inputSeq: {}, inputAck: {}, emptySince: 0 };
     rooms.set(c, room);
     const token = String(payload?.token || randomBytes(12).toString('hex'));
     const id = addHuman(room, socket.id, String(payload?.name || 'Host'), token)!;
@@ -165,6 +165,7 @@ setInterval(() => { for (const r of rooms.values()) {
   const all = { ...r.inputs };
   for (const a of r.state.actors) if (a.bot) all[a.id] = botInput(r.state, a);
   tick(r.state, all);
+  r.serverTick++;
   for (const id of Object.keys(r.inputSeq)) r.inputAck[id] = r.inputSeq[id];
 }}, 1000 / 60);
 setInterval(() => { for (const r of rooms.values()) emitRoom(r); }, 1000 / 20);

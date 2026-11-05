@@ -8,7 +8,7 @@
   "poses": {
     "idle": {
       "frames": 10,
-      "fps": 7,
+      "fps": 8,
       "loop": true,
       "runtime": true,
       "variants": [
@@ -20,7 +20,7 @@
     },
     "walk": {
       "frames": 10,
-      "fps": 10,
+      "fps": 16,
       "loop": true,
       "runtime": true,
       "variants": [
@@ -32,7 +32,7 @@
     },
     "run": {
       "frames": 10,
-      "fps": 14,
+      "fps": 20,
       "loop": true,
       "runtime": true,
       "variants": [
@@ -44,7 +44,7 @@
     },
     "jump": {
       "frames": 6,
-      "fps": 12,
+      "fps": 16,
       "loop": false,
       "runtime": true,
       "variants": [
@@ -56,7 +56,7 @@
     },
     "fall": {
       "frames": 4,
-      "fps": 12,
+      "fps": 16,
       "loop": false,
       "runtime": true,
       "variants": [
@@ -68,7 +68,7 @@
     },
     "fall_loop": {
       "frames": 3,
-      "fps": 9,
+      "fps": 12,
       "loop": true,
       "runtime": true,
       "variants": [
@@ -80,7 +80,7 @@
     },
     "slide": {
       "frames": 8,
-      "fps": 14,
+      "fps": 18,
       "loop": false,
       "runtime": true,
       "variants": [
@@ -92,7 +92,7 @@
     },
     "wall_slide": {
       "frames": 4,
-      "fps": 10,
+      "fps": 12,
       "loop": true,
       "runtime": true,
       "variants": [
@@ -116,7 +116,7 @@
     },
     "ledge_climb": {
       "frames": 11,
-      "fps": 16,
+      "fps": 18,
       "loop": false,
       "runtime": true,
       "variants": [
@@ -128,7 +128,7 @@
     },
     "idle_turn": {
       "frames": 4,
-      "fps": 14,
+      "fps": 20,
       "loop": false,
       "runtime": true,
       "variants": [
@@ -140,7 +140,7 @@
     },
     "walk_turn": {
       "frames": 4,
-      "fps": 14,
+      "fps": 20,
       "loop": false,
       "runtime": true,
       "variants": [
@@ -152,7 +152,7 @@
     },
     "run_turn": {
       "frames": 4,
-      "fps": 14,
+      "fps": 20,
       "loop": false,
       "runtime": true,
       "variants": [
@@ -164,7 +164,7 @@
     },
     "run_to_idle": {
       "frames": 7,
-      "fps": 14,
+      "fps": 24,
       "loop": false,
       "runtime": true,
       "variants": [
@@ -176,7 +176,7 @@
     },
     "wall_jump": {
       "frames": 4,
-      "fps": 14,
+      "fps": 18,
       "loop": false,
       "runtime": true,
       "variants": [
@@ -200,7 +200,7 @@
     },
     "flap": {
       "frames": 3,
-      "fps": 9,
+      "fps": 12,
       "loop": true,
       "runtime": true,
       "variants": [
@@ -212,7 +212,7 @@
     },
     "throw": {
       "frames": 4,
-      "fps": 14,
+      "fps": 16,
       "loop": false,
       "runtime": true,
       "variants": [
@@ -224,7 +224,7 @@
     },
     "cluck": {
       "frames": 2,
-      "fps": 7,
+      "fps": 8,
       "loop": true,
       "runtime": true,
       "variants": [

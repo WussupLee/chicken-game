@@ -66,10 +66,10 @@ public static class ChickenTemplateArt {
       "..KWWWWSK..",
       "...KKKKK..."
     };
-    int x0=left-2,y0=top-2;
-    for(int y=0;y<rows.Length;y++)for(int x=0;x<rows[y].Length;x++){
+    int x0=left-3,y0=top-3;
+    for(int y=0;y<13;y++)for(int x=0;x<13;x++){
       Color color=Clear;
-      switch(rows[y][x]){case 'R':color=Comb;break;case 'K':color=Ink;break;case 'W':color=White;break;case 'S':color=Shade;break;case 'O':color=Beak;break;}
+      switch(rows[(int)Math.Round(y*10.0/12)][(int)Math.Round(x*10.0/12)]){case 'R':color=Comb;break;case 'K':color=Ink;break;case 'W':color=White;break;case 'S':color=Shade;break;case 'O':color=Beak;break;}
       int xx=x0+x,yy=y0+y;
       if(color.A>0&&xx>=0&&xx<128&&yy>=0&&yy<128)image.SetPixel(xx,yy,color);
     }
@@ -118,9 +118,41 @@ public static class ChickenTemplateArt {
     return image;
   }
   static void KeepHeadInFront(Bitmap source,Bitmap variant,int left,int top){
-    for(int y=Math.Max(0,top-2);y<Math.Min(128,top+9);y++)
-      for(int x=Math.Max(0,left-2);x<Math.Min(128,left+9);x++)
+    for(int y=Math.Max(0,top-3);y<Math.Min(128,top+10);y++)
+      for(int x=Math.Max(0,left-3);x<Math.Min(128,left+10);x++)
         variant.SetPixel(x,y,source.GetPixel(x,y));
+  }
+  public static void EnlargeSheet(string file,bool combo,int[] shiftX,int[] shiftY){
+    using(var source=new Bitmap(file)){
+      var frames=new Bitmap[source.Width/128];
+      for(int frame=0;frame<frames.Length;frame++){
+        var old=CopyFrame(source,frame);
+        var output=new Bitmap(128,128,PixelFormat.Format32bppArgb);
+        var effect=new bool[128,128];
+        if(combo){
+          for(int y=0;y<128;y++)for(int x=0;x<128;x++){
+            var c=old.GetPixel(x,y);
+            effect[x,y]=c.A>0&&((c.R==255&&c.G==255&&c.B==255)||(c.R==166&&c.G==252&&c.B==219));
+          }
+          for(int y=0;y<128;y++)for(int x=0;x<128;x++)if(IsInk(old.GetPixel(x,y))){
+            for(int dy=-1;dy<=1&&!effect[x,y];dy++)for(int dx=-1;dx<=1;dx++){
+              int xx=x+dx,yy=y+dy;
+              if(xx>=0&&xx<128&&yy>=0&&yy<128&&effect[xx,yy]){effect[x,y]=true;break;}
+            }
+          }
+        }
+        for(int y=0;y<128;y++)for(int x=0;x<128;x++){
+          int xx=60+(int)Math.Floor((x-shiftX[frame]-60)/1.5),yy=80+(int)Math.Floor((y-shiftY[frame]-80)/1.5);
+          if(xx>=0&&xx<128&&yy>=0&&yy<128&&!effect[xx,yy])output.SetPixel(x,y,old.GetPixel(xx,yy));
+        }
+        if(combo)for(int y=0;y<128;y++)for(int x=0;x<128;x++)if(effect[x,y]){
+          var underneath=output.GetPixel(x,y);
+          if(!Same(underneath,White)&&!Same(underneath,Shade)&&!Same(underneath,Comb)&&!Same(underneath,Beak))output.SetPixel(x,y,old.GetPixel(x,y));
+        }
+        frames[frame]=output;old.Dispose();
+      }
+      source.Dispose();SaveFrames(frames,file);foreach(var frame in frames)frame.Dispose();
+    }
   }
   public static void SaveFrames(Bitmap[] frames,string target){
     using(var sheet=new Bitmap(frames.Length*128,128,PixelFormat.Format32bppArgb)){
@@ -241,8 +273,26 @@ foreach ($pose in $derived.Keys) {
     [ChickenTemplateArt]::SaveFrames($frames.ToArray(),(Join-Path $target "$pose$suffix.png"))
     foreach($frame in $frames){$frame.Dispose()}
   }
-  $anchors[$pose] = @($derived[$pose] | ForEach-Object { $anchors[$_[0]][[int]$_[1]] })
+  $anchors[$pose] = @($derived[$pose] | ForEach-Object { $anchors[$_[0]][[int]$_[1]] | ConvertTo-Json -Compress | ConvertFrom-Json })
 }
+$anchors | ConvertTo-Json -Depth 10 -Compress | Set-Content -LiteralPath (Join-Path $target 'anchors.json') -Encoding utf8
+$poseShiftX=@{};$poseShiftY=@{}
+foreach ($pose in @($native)+@($combos)+@($derived.Keys)) {
+  $suffixes = if($pose -in $combos){@('','-up','-diag')}else{@('','-gun','-up','-diag')}
+  $base=[Drawing.Bitmap]::FromFile((Join-Path $target "$pose.png"))
+  $shiftX=[int[]]::new($base.Width/128);$shiftY=[int[]]::new($base.Width/128)
+  if($pose -notin $combos){for($frame=0;$frame -lt $shiftX.Length;$frame++){
+    $minX=128;$maxX=-1;$minY=128;$maxY=-1
+    for($y=0;$y -lt 128;$y++){for($x=0;$x -lt 128;$x++){if($base.GetPixel($frame*128+$x,$y).A -gt 0){$minX=[Math]::Min($minX,$x);$maxX=[Math]::Max($maxX,$x);$minY=[Math]::Min($minY,$y);$maxY=[Math]::Max($maxY,$y)}}}
+    $scaledMinX=60+($minX-60)*1.5;$scaledMaxX=60+($maxX-60)*1.5
+    $scaledMinY=80+($minY-80)*1.5;$scaledMaxY=80+($maxY-80)*1.5
+    if($scaledMinX -lt 2){$shiftX[$frame]=[int][Math]::Ceiling(2-$scaledMinX)}elseif($scaledMaxX -gt 125){$shiftX[$frame]=[int][Math]::Floor(125-$scaledMaxX)}
+    if($scaledMinY -lt 2){$shiftY[$frame]=[int][Math]::Ceiling(2-$scaledMinY)}elseif($scaledMaxY -gt 125){$shiftY[$frame]=[int][Math]::Floor(125-$scaledMaxY)}
+  }}
+  $base.Dispose();$poseShiftX[$pose]=$shiftX;$poseShiftY[$pose]=$shiftY
+  foreach($suffix in $suffixes){[ChickenTemplateArt]::EnlargeSheet((Join-Path $target "$pose$suffix.png"),($pose -in $combos),$shiftX,$shiftY)}
+}
+foreach($pose in $anchors.Keys){for($index=0;$index -lt $anchors[$pose].Count;$index++){foreach($key in @('gun','up','diag')){$point=$anchors[$pose][$index].$key;$point[0]=[int][Math]::Round(60+($point[0]-60)*1.5+$poseShiftX[$pose][$index]);$point[1]=[int][Math]::Round(80+($point[1]-80)*1.5+$poseShiftY[$pose][$index])}}}
 $anchors | ConvertTo-Json -Depth 10 -Compress | Set-Content -LiteralPath (Join-Path $target 'anchors.json') -Encoding utf8
 $manual = Join-Path $root 'art/template-edits/hero'
 if (Test-Path $manual) {

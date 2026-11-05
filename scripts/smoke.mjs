@@ -20,5 +20,8 @@ try {
   let state;
   do { state = await once(host, 'state'); } while (state.phase !== 'round');
   if (state.actors.length !== 3 || !state.actors.some(a => a.bot)) throw new Error('Wrong participant state');
+  if (!Number.isSafeInteger(state.serverTick)) throw new Error('Missing server tick for smooth playback');
+  let next;
+  do { next = await once(guest, 'state'); } while (next.phase !== 'round' || next.serverTick <= state.serverTick);
   console.log(`PASS: room ${created.code} started with host, guest, and bot`);
 } finally { host.disconnect(); guest.disconnect(); }
