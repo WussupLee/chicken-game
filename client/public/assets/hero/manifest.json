@@ -1,0 +1,352 @@
+{
+  "frameWidth": 128,
+  "frameHeight": 128,
+  "origin": [
+    60,
+    80
+  ],
+  "poses": {
+    "idle": {
+      "frames": 10,
+      "fps": 7,
+      "loop": true,
+      "runtime": true,
+      "variants": [
+        "",
+        "-gun",
+        "-up",
+        "-diag"
+      ]
+    },
+    "walk": {
+      "frames": 10,
+      "fps": 10,
+      "loop": true,
+      "runtime": true,
+      "variants": [
+        "",
+        "-gun",
+        "-up",
+        "-diag"
+      ]
+    },
+    "run": {
+      "frames": 10,
+      "fps": 14,
+      "loop": true,
+      "runtime": true,
+      "variants": [
+        "",
+        "-gun",
+        "-up",
+        "-diag"
+      ]
+    },
+    "jump": {
+      "frames": 6,
+      "fps": 12,
+      "loop": false,
+      "runtime": true,
+      "variants": [
+        "",
+        "-gun",
+        "-up",
+        "-diag"
+      ]
+    },
+    "fall": {
+      "frames": 4,
+      "fps": 12,
+      "loop": false,
+      "runtime": true,
+      "variants": [
+        "",
+        "-gun",
+        "-up",
+        "-diag"
+      ]
+    },
+    "fall_loop": {
+      "frames": 3,
+      "fps": 9,
+      "loop": true,
+      "runtime": true,
+      "variants": [
+        "",
+        "-gun",
+        "-up",
+        "-diag"
+      ]
+    },
+    "slide": {
+      "frames": 8,
+      "fps": 14,
+      "loop": false,
+      "runtime": true,
+      "variants": [
+        "",
+        "-gun",
+        "-up",
+        "-diag"
+      ]
+    },
+    "wall_slide": {
+      "frames": 4,
+      "fps": 10,
+      "loop": true,
+      "runtime": true,
+      "variants": [
+        "",
+        "-gun",
+        "-up",
+        "-diag"
+      ]
+    },
+    "ledge_hang": {
+      "frames": 7,
+      "fps": 8,
+      "loop": true,
+      "runtime": true,
+      "variants": [
+        "",
+        "-gun",
+        "-up",
+        "-diag"
+      ]
+    },
+    "ledge_climb": {
+      "frames": 11,
+      "fps": 16,
+      "loop": false,
+      "runtime": true,
+      "variants": [
+        "",
+        "-gun",
+        "-up",
+        "-diag"
+      ]
+    },
+    "idle_turn": {
+      "frames": 4,
+      "fps": 14,
+      "loop": false,
+      "runtime": true,
+      "variants": [
+        "",
+        "-gun",
+        "-up",
+        "-diag"
+      ]
+    },
+    "walk_turn": {
+      "frames": 4,
+      "fps": 14,
+      "loop": false,
+      "runtime": true,
+      "variants": [
+        "",
+        "-gun",
+        "-up",
+        "-diag"
+      ]
+    },
+    "run_turn": {
+      "frames": 4,
+      "fps": 14,
+      "loop": false,
+      "runtime": true,
+      "variants": [
+        "",
+        "-gun",
+        "-up",
+        "-diag"
+      ]
+    },
+    "run_to_idle": {
+      "frames": 7,
+      "fps": 14,
+      "loop": false,
+      "runtime": true,
+      "variants": [
+        "",
+        "-gun",
+        "-up",
+        "-diag"
+      ]
+    },
+    "wall_jump": {
+      "frames": 4,
+      "fps": 14,
+      "loop": false,
+      "runtime": true,
+      "variants": [
+        "",
+        "-gun",
+        "-up",
+        "-diag"
+      ]
+    },
+    "crouch": {
+      "frames": 2,
+      "fps": 8,
+      "loop": true,
+      "runtime": true,
+      "variants": [
+        "",
+        "-gun",
+        "-up",
+        "-diag"
+      ]
+    },
+    "flap": {
+      "frames": 3,
+      "fps": 9,
+      "loop": true,
+      "runtime": true,
+      "variants": [
+        "",
+        "-gun",
+        "-up",
+        "-diag"
+      ]
+    },
+    "throw": {
+      "frames": 4,
+      "fps": 14,
+      "loop": false,
+      "runtime": true,
+      "variants": [
+        "",
+        "-gun",
+        "-up",
+        "-diag"
+      ]
+    },
+    "cluck": {
+      "frames": 2,
+      "fps": 7,
+      "loop": true,
+      "runtime": true,
+      "variants": [
+        "",
+        "-gun",
+        "-up",
+        "-diag"
+      ]
+    },
+    "ragdoll": {
+      "frames": 2,
+      "fps": 8,
+      "loop": false,
+      "runtime": true,
+      "variants": [
+        "",
+        "-gun",
+        "-up",
+        "-diag"
+      ]
+    },
+    "combo_1": {
+      "frames": 3,
+      "fps": 14,
+      "loop": false,
+      "runtime": true,
+      "variants": [
+        "",
+        "-up",
+        "-diag"
+      ]
+    },
+    "combo_1_end": {
+      "frames": 4,
+      "fps": 14,
+      "loop": false,
+      "runtime": true,
+      "variants": [
+        "",
+        "-up",
+        "-diag"
+      ]
+    },
+    "combo_2": {
+      "frames": 6,
+      "fps": 16,
+      "loop": false,
+      "runtime": true,
+      "variants": [
+        "",
+        "-up",
+        "-diag"
+      ]
+    },
+    "combo_2_end": {
+      "frames": 4,
+      "fps": 16,
+      "loop": false,
+      "runtime": true,
+      "variants": [
+        "",
+        "-up",
+        "-diag"
+      ]
+    },
+    "combo_3": {
+      "frames": 12,
+      "fps": 20,
+      "loop": false,
+      "runtime": true,
+      "variants": [
+        "",
+        "-up",
+        "-diag"
+      ]
+    },
+    "combo_3_end": {
+      "frames": 6,
+      "fps": 20,
+      "loop": false,
+      "runtime": true,
+      "variants": [
+        "",
+        "-up",
+        "-diag"
+      ]
+    },
+    "dash": {
+      "frames": 5,
+      "fps": 8,
+      "loop": false,
+      "runtime": false,
+      "variants": [
+        ""
+      ]
+    },
+    "hurt": {
+      "frames": 6,
+      "fps": 8,
+      "loop": false,
+      "runtime": false,
+      "variants": [
+        ""
+      ]
+    },
+    "death": {
+      "frames": 23,
+      "fps": 8,
+      "loop": false,
+      "runtime": false,
+      "variants": [
+        ""
+      ]
+    },
+    "design": {
+      "frames": 1,
+      "fps": 8,
+      "loop": false,
+      "runtime": false,
+      "variants": [
+        ""
+      ]
+    }
+  }
+}

@@ -5,3 +5,5 @@ coverage/
 *.log
 .tools/
 .npm-cache/
+art/source/template-pro/
+.art-review/

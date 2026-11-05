@@ -9,7 +9,9 @@
     "server": "tsx server/index.ts",
     "build": "tsc --noEmit && vite build",
     "start": "tsx server/index.ts",
-    "test": "vitest run --config vitest.config.ts"
+    "test": "vitest run --config vitest.config.ts",
+    "art:check": "node scripts/check-studio.mjs",
+    "art:build": "pwsh -NoProfile -File scripts/build-template-hero.ps1 && node scripts/create-hero-manifest.mjs && node scripts/create-studio-catalog.mjs && node scripts/check-studio.mjs"
   },
   "dependencies": {
     "express": "^5.1.0",
