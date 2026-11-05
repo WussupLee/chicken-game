@@ -130,8 +130,10 @@ function render(): void {
   const scores = state.actors.map(a=>`<span class="score" style="color:#${COLORS[a.slot].toString(16)}">${esc(a.name)} ${a.wins}</span>`).join('');
   const phase = state.phase;
   const overlay = phase==='round'?'':`<div class="overlay"><div class="overlay-card"><h2>${phase==='intermission'?'THE SCOREBOARD':phase==='winner'?'THE CHAMPION':'COOP NEWS'}</h2><p>${esc(state.message)}</p>${phase==='intermission'?state.actors.map(a=>`<div>${esc(a.name)} — ${a.wins} wins</div>`).join(''):''}${phase==='winner'&&state.host===myId?button('again','Play again'):''}</div></div>`;
-  const hadCanvas = !!document.querySelector('#game canvas');
-  if (!hadCanvas) {
+  // Phaser attaches its canvas asynchronously. The socket can render again first;
+  // rebuilding here would abort the loader on every snapshot, especially on phones.
+  const hadGame = !!game && !!document.querySelector('#game');
+  if (!hadGame) {
     app.innerHTML=`<main class="shell handheld-page">${title}<div class="handheld"><div class="handheld-top"><span class="power-led"></span><span>CHICKEN COLOR · LINK ARENA</span><span class="battery-label">POWER</span></div><div class="game-wrap"><div id="game"></div><div class="hud" id="hud"></div><div id="spectate-hud"></div><div id="phase-overlay"></div></div><div class="handheld-wordmark">CHICKEN <em>GAME</em><span>✦ 4 PLAYER LINK ✦</span></div><div class="touch-controls" aria-label="Handheld game controls"><button class="touch-shoulder shoulder-l" data-touch="cluck" aria-label="Quack"><strong>L</strong><small>QUACK</small></button><button class="touch-shoulder shoulder-r" data-touch="ragdoll" aria-label="Ragdoll"><strong>R</strong><small>RAGDOLL</small></button><div class="touch-move" aria-label="Eight-direction pad"><button class="dpad-up-left" data-touch="upLeft" aria-label="Move and aim up left">↖</button><button class="dpad-up" data-touch="up" aria-label="Aim up">▲</button><button class="dpad-up-right" data-touch="upRight" aria-label="Move and aim up right">↗</button><button class="dpad-left" data-touch="left" aria-label="Move left">◀</button><div class="dpad-center" aria-hidden="true"></div><button class="dpad-right" data-touch="right" aria-label="Move right">▶</button><button class="dpad-down-left" data-touch="downLeft" aria-label="Move and slide left">↙</button><button class="dpad-down" data-touch="down" aria-label="Crouch or slide">▼</button><button class="dpad-down-right" data-touch="downRight" aria-label="Move and slide right">↘</button></div><div class="touch-actions" aria-label="Action buttons"><button class="action-grab" data-touch="grab" aria-label="Grab or throw">GRAB / THROW</button><button class="action-b" data-touch="fire" aria-label="Fire or swing"><strong>B</strong><small>FIRE</small></button><button class="action-a" data-touch="jump" aria-label="Jump, flap, or change spectator camera"><strong>A</strong><small>JUMP</small></button></div></div><div class="handheld-bottom"><span>SELECT</span><i></i><i></i><span>START</span><div class="speaker" aria-hidden="true">▰ ▰ ▰ ▰ ▰</div></div></div><div class="footer">A/D move · W+A/D aim diagonally · S slide · S+Space drop · Space jump/flap · J grab/throw · K fire/swing · L ragdoll · E quack</div></main>`;
     initGame(); bindTouchControls();
   }
@@ -140,10 +142,10 @@ function render(): void {
   const empty=!!mine?.weapon&&mine.weapon!=='sword'&&mine.ammo===0;
   const weaponCard=mine?.weapon?`<div class="weapon-card${empty?' empty':''}"><img src="/assets/weapons/${weaponArt[mine.weapon]}" alt=""/><span>${esc(mine.weapon.toUpperCase())}<strong>${mine.weapon==='sword'?'∞':mine.ammo}</strong>${empty?'<em>EMPTY</em>':mine.grenadeFuse?'<em>PIN OUT</em>':''}</span></div>`:mine?.heldBody?'<div class="weapon-card">BODY HELD</div>':'<div class="weapon-card">UNARMED</div>';
   const hudHtml=`<div class="scoreboard">${scores}</div><div class="hud-right"><div class="score">ROUND ${state.round} · ${Math.max(0,Math.ceil(state.timer))}s</div>${weaponCard}</div>`;
-  if(!hadCanvas||hudHtml!==lastHudKey){document.querySelector('#hud')!.innerHTML=hudHtml;lastHudKey=hudHtml;}
+  if(!hadGame||hudHtml!==lastHudKey){document.querySelector('#hud')!.innerHTML=hudHtml;lastHudKey=hudHtml;}
   const watched=spectateTarget==='wide'?'WIDE ARENA':state.actors.find(a=>a.id===spectateTarget)?.name;
   const spectateHtml=mine&&!mine.alive&&state.phase==='round'?`<div class="spectate-card">SPECTATING ${esc(watched||'ARENA')} · A NEXT</div>`:'';
-  if(!hadCanvas||spectateHtml!==lastSpectateKey){document.querySelector('#spectate-hud')!.innerHTML=spectateHtml;lastSpectateKey=spectateHtml;}
+  if(!hadGame||spectateHtml!==lastSpectateKey){document.querySelector('#spectate-hud')!.innerHTML=spectateHtml;lastSpectateKey=spectateHtml;}
   if (overlay!==lastOverlayKey) {document.querySelector('#phase-overlay')!.innerHTML=overlay;lastOverlayKey=overlay;document.querySelector('#again')?.addEventListener('click',()=>socket.emit('start'));}
 }
 
@@ -209,6 +211,8 @@ class ArenaScene extends Phaser.Scene {
     return transition??base;
   }
   preload(){
+    this.load.on('progress',(progress:number)=>{const status=document.querySelector<HTMLElement>('#scene-status');if(status&&!status.dataset.error)status.textContent=`Loading arena art… ${Math.round(progress*100)}%`;});
+    this.load.on('loaderror',()=>{const status=document.querySelector<HTMLElement>('#scene-status');if(status){status.dataset.error='true';status.textContent='Arena art could not load. Reload the game to retry.';}});
     for (const pose of Object.keys(HERO_MANIFEST.poses) as HeroPose[]) for (const variant of HERO_MANIFEST.poses[pose].runtime ? HERO_MANIFEST.poses[pose].variants : []) {
       const key = `hero-${pose}${variant}`;
       this.load.spritesheet(key, `/assets/hero/${pose}${variant}.png`, {frameWidth:128,frameHeight:128});
@@ -365,12 +369,21 @@ class ArenaScene extends Phaser.Scene {
     for(const [id,img] of this.chickens) if(!s.actors.some(a=>a.id===id)){img.destroy();this.chickens.delete(id);this.animationStart.delete(id);this.motion.delete(id);}
     for(const [id,img] of this.weaponSprites)if(!activeWeaponSprites.has(id)){img.destroy();this.weaponSprites.delete(id);}
     if(s.phase==='intermission'||s.phase==='winner'){for(let i=0;i<28;i++){g.fillStyle(COLORS[i%4],0.8);g.fillCircle(25+i*34,480-(i%3)*7,8);}}
+    const status=document.querySelector<HTMLElement>('#scene-status');if(status&&!status.dataset.error)status.classList.add('hidden');
   }
   placeWeapon(id:string,key:string,x:number,y:number,facing:number,scale:number,rotation=0,tint=0xffffff):void{let image=this.weaponSprites.get(id);if(!image){image=this.add.image(x,y,key).setDepth(3);this.weaponSprites.set(id,image);}image.setTexture(key).setPosition(x,y).setFlipX(facing<0).setScale(scale).setRotation(rotation).setTint(tint).setVisible(true);}
 }
 let activeViewWidth=WIDTH;
 function desiredViewWidth():number{return matchMedia('(max-width:700px) and (orientation:portrait)').matches?600:WIDTH;}
-function initGame(){ game?.destroy(true); activeViewWidth=desiredViewWidth(); game=new Phaser.Game({type:Phaser.AUTO,width:activeViewWidth,height:HEIGHT,parent:'game',pixelArt:true,transparent:false,scene:[ArenaScene],scale:{mode:Phaser.Scale.FIT,autoCenter:Phaser.Scale.CENTER_BOTH}}); }
+function initGame(){
+  game?.destroy(true);
+  const wrap=document.querySelector<HTMLElement>('.game-wrap');
+  let status=document.querySelector<HTMLElement>('#scene-status');
+  if(wrap&&!status){status=document.createElement('div');status.id='scene-status';status.className='scene-status';status.setAttribute('role','status');wrap.append(status);}
+  if(status){status.classList.remove('hidden');status.textContent='Loading arena art…';delete status.dataset.error;}
+  activeViewWidth=desiredViewWidth();
+  game=new Phaser.Game({type:Phaser.AUTO,width:activeViewWidth,height:HEIGHT,parent:'game',pixelArt:true,transparent:false,scene:[ArenaScene],scale:{mode:Phaser.Scale.FIT,autoCenter:Phaser.Scale.CENTER_BOTH}});
+}
 window.addEventListener('resize',()=>{if(game&&activeViewWidth!==desiredViewWidth())initGame();});
 function bindTouchControls():void {
   touchPointers.clear();
